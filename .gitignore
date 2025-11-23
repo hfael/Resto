@@ -1,0 +1,32 @@
+# Docker
+mysql_data/
+docker/php/.cache/
+docker/php/vendor/
+
+# Logs
+*.log
+logs/
+tmp/
+
+# Composer
+/vendor/
+composer.lock
+
+# Node (si utilisé plus tard)
+node_modules/
+
+# Cache
+.cache/
+.idea/
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Env
+.env
+.env.local
+
+# PHP session files (si tu en génères)
+sessions/
