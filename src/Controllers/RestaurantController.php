@@ -21,7 +21,7 @@ class RestaurantController
         <input type="text" id="searchInput" placeholder="Rechercher..." style="margin-bottom:10px">
 
         <div id="results">';
-        
+
         $items = Restaurant::all();
 
         foreach ($items as $r) {
@@ -34,7 +34,7 @@ class RestaurantController
         $html .= '</div>';
 
         $html .= '<br><a href="/restaurant/create">Ajouter un restaurant</a>';
-        
+
         $html .= '
         <script>
             const input = document.getElementById("searchInput");
@@ -66,6 +66,24 @@ class RestaurantController
         View::render($html);
     }
 
+    public function search()
+    {
+        $query = isset($_GET['q']) ? trim($_GET['q']) : '';
+
+        $db = Database::getConnection();
+        $stmt = $db->prepare("
+            SELECT id, name, average_price 
+            FROM restaurants 
+            WHERE name LIKE ?
+            ORDER BY id DESC
+        ");
+        $stmt->execute(['%' . $query . '%']);
+        $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        header('Content-Type: application/json');
+        echo json_encode($results);
+        exit;
+    }
 
     public function show()
     {
@@ -82,9 +100,17 @@ class RestaurantController
         }
 
         $html = "<h2>Détails du restaurant</h2>";
-        foreach ($r as $k => $v) {
-            $html .= "<p><strong>$k :</strong> $v</p>";
-        }
+
+        $html .= "<img src='" . $r['photo'] . "' width='300'><br><br>";
+
+        $html .= "<p><strong>Nom :</strong> " . $r['name'] . "</p>";
+        $html .= "<p><strong>Description :</strong> " . $r['description'] . "</p>";
+        $html .= "<p><strong>Date :</strong> " . $r['event_date'] . "</p>";
+        $html .= "<p><strong>Prix moyen :</strong> " . $r['average_price'] . "€</p>";
+        $html .= "<p><strong>Latitude :</strong> " . $r['latitude'] . "</p>";
+        $html .= "<p><strong>Longitude :</strong> " . $r['longitude'] . "</p>";
+        $html .= "<p><strong>Contact :</strong> " . $r['contact_name'] . "</p>";
+        $html .= "<p><strong>Email :</strong> " . $r['contact_email'] . "</p>";
 
         View::render($html);
     }
@@ -95,7 +121,7 @@ class RestaurantController
 
         $html = '
             <h2>Ajouter un restaurant</h2>
-            <form action="/restaurant/store" method="POST">
+            <form action="/restaurant/store" method="POST" enctype="multipart/form-data">
                 <input type="text" name="name" placeholder="Nom"><br>
                 <textarea name="description" placeholder="Description"></textarea><br>
                 <input type="date" name="event_date"><br>
@@ -104,7 +130,8 @@ class RestaurantController
                 <input type="text" name="longitude" placeholder="Longitude"><br>
                 <input type="text" name="contact_name" placeholder="Contact"><br>
                 <input type="email" name="contact_email" placeholder="Email contact"><br>
-                <input type="text" name="photo" placeholder="URL photo (temporaire)"><br>
+                <p>Photo :</p>
+                <input type="file" name="photo"><br><br>
                 <button type="submit">Créer</button>
             </form>
         ';
@@ -116,7 +143,33 @@ class RestaurantController
     {
         $this->requireLogin();
 
+        if (!isset($_FILES['photo']) || $_FILES['photo']['error'] !== UPLOAD_ERR_OK) {
+            View::render("<p>Erreur lors de l'upload de l'image.</p>");
+            return;
+        }
+
+        $file = $_FILES['photo'];
+        $allowed = ['image/jpeg', 'image/png', 'image/webp'];
+
+        if (!in_array($file['type'], $allowed)) {
+            View::render("<p>Format d'image non supporté.</p>");
+            return;
+        }
+
+        $ext = pathinfo($file['name'], PATHINFO_EXTENSION);
+        $newName = 'restaurant_' . time() . '_' . rand(1000,9999) . '.' . $ext;
+
+        $uploadPath = '/var/www/html/uploads/' . $newName;
+
+        if (!move_uploaded_file($file['tmp_name'], $uploadPath)) {
+            View::render("<p>Impossible de sauvegarder l'image.</p>");
+            return;
+        }
+
+        $_POST['photo'] = '/uploads/' . $newName;
+
         Restaurant::create($_POST);
+
         header("Location: /restaurant/index");
         exit;
     }
@@ -139,7 +192,7 @@ class RestaurantController
 
         $html = '
             <h2>Modifier un restaurant</h2>
-            <form action="/restaurant/update?id=' . $id . '" method="POST">
+            <form action="/restaurant/update?id=' . $id . '" method="POST" enctype="multipart/form-data">
                 <input type="text" name="name" value="' . $r['name'] . '"><br>
                 <textarea name="description">' . $r['description'] . '</textarea><br>
                 <input type="date" name="event_date" value="' . $r['event_date'] . '"><br>
@@ -148,7 +201,13 @@ class RestaurantController
                 <input type="text" name="longitude" value="' . $r['longitude'] . '"><br>
                 <input type="text" name="contact_name" value="' . $r['contact_name'] . '"><br>
                 <input type="email" name="contact_email" value="' . $r['contact_email'] . '"><br>
-                <input type="text" name="photo" value="' . $r['photo'] . '"><br>
+
+                <p>Photo actuelle :</p>
+                <img src="' . $r['photo'] . '" width="150"><br><br>
+
+                <p>Nouvelle photo (optionnel) :</p>
+                <input type="file" name="photo"><br><br>
+
                 <button type="submit">Sauvegarder</button>
             </form>
         ';
@@ -166,7 +225,31 @@ class RestaurantController
             return;
         }
 
-        Restaurant::update($id, $_POST);
+        $data = $_POST;
+
+        if (isset($_FILES['photo']) && $_FILES['photo']['error'] === UPLOAD_ERR_OK) {
+            $file = $_FILES['photo'];
+            $allowed = ['image/jpeg', 'image/png', 'image/webp'];
+
+            if (!in_array($file['type'], $allowed)) {
+                View::render("<p>Format d'image non supporté.</p>");
+                return;
+            }
+
+            $ext = pathinfo($file['name'], PATHINFO_EXTENSION);
+            $newName = 'restaurant_' . time() . '_' . rand(1000,9999) . '.' . $ext;
+
+            $uploadPath = '/var/www/html/uploads/' . $newName;
+
+            if (!move_uploaded_file($file['tmp_name'], $uploadPath)) {
+                View::render("<p>Impossible de sauvegarder l'image.</p>");
+                return;
+            }
+
+            $data['photo'] = '/uploads/' . $newName;
+        }
+
+        Restaurant::update($id, $data);
 
         header("Location: /restaurant/index");
         exit;
@@ -185,24 +268,6 @@ class RestaurantController
         Restaurant::delete($id);
 
         header("Location: /restaurant/index");
-        exit;
-    }
-    public function search()
-    {
-        $query = isset($_GET['q']) ? trim($_GET['q']) : '';
-
-        $db = Database::getConnection();
-        $stmt = $db->prepare("
-            SELECT id, name, average_price 
-            FROM restaurants 
-            WHERE name LIKE ?
-            ORDER BY id DESC
-        ");
-        $stmt->execute(['%' . $query . '%']);
-        $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-        header('Content-Type: application/json');
-        echo json_encode($results);
         exit;
     }
 }
