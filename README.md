@@ -1,6 +1,6 @@
 # Projet Restaurant – PHP + Docker
 
-Application scolaire en PHP sans framework, exécutée via Docker.
+Application scolaire en PHP sans framework backend, exécutée via Docker.
 
 ## Lancement
 docker compose up -d --build
