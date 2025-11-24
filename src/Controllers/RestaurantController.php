@@ -15,9 +15,14 @@ class RestaurantController
 
     public function index()
     {
-        $items = Restaurant::all();
+        $html = '
+        <h2>Liste des restaurants</h2>
 
-        $html = "<h2>Liste des restaurants</h2>";
+        <input type="text" id="searchInput" placeholder="Rechercher..." style="margin-bottom:10px">
+
+        <div id="results">';
+        
+        $items = Restaurant::all();
 
         foreach ($items as $r) {
             $html .= $r['name'] . " - " . $r['average_price'] . "€ ";
@@ -26,10 +31,41 @@ class RestaurantController
             $html .= '<a href="/restaurant/delete?id=' . $r['id'] . '">Supprimer</a><br>';
         }
 
+        $html .= '</div>';
+
         $html .= '<br><a href="/restaurant/create">Ajouter un restaurant</a>';
+        
+        $html .= '
+        <script>
+            const input = document.getElementById("searchInput");
+            const results = document.getElementById("results");
+
+            input.addEventListener("input", function() {
+                const q = this.value;
+
+                fetch("/restaurant/search?q=" + encodeURIComponent(q))
+                    .then(res => res.json())
+                    .then(data => {
+                        results.innerHTML = "";
+                        data.forEach(item => {
+                            results.innerHTML += 
+                                item.name + " - " + item.average_price + "€ " +
+                                "<a href=\'/restaurant/show?id=" + item.id + "\'>Détails</a> " +
+                                "<a href=\'/restaurant/edit?id=" + item.id + "\'>Modifier</a> " +
+                                "<a href=\'/restaurant/delete?id=" + item.id + "\'>Supprimer</a><br>";
+                        });
+
+                        if (data.length === 0) {
+                            results.innerHTML = "<p>Aucun résultat</p>";
+                        }
+                    });
+            });
+        </script>
+        ';
 
         View::render($html);
     }
+
 
     public function show()
     {
@@ -149,6 +185,24 @@ class RestaurantController
         Restaurant::delete($id);
 
         header("Location: /restaurant/index");
+        exit;
+    }
+    public function search()
+    {
+        $query = isset($_GET['q']) ? trim($_GET['q']) : '';
+
+        $db = Database::getConnection();
+        $stmt = $db->prepare("
+            SELECT id, name, average_price 
+            FROM restaurants 
+            WHERE name LIKE ?
+            ORDER BY id DESC
+        ");
+        $stmt->execute(['%' . $query . '%']);
+        $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        header('Content-Type: application/json');
+        echo json_encode($results);
         exit;
     }
 }
