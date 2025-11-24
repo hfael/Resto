@@ -1,8 +1,6 @@
 <?php
 
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
+session_start();
 
 $uri = trim(parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH), '/');
 $segments = explode('/', $uri);
@@ -15,7 +13,7 @@ $controllerFile = __DIR__ . '/../src/Controllers/' . $controllerName . '.php';
 
 if (!file_exists($controllerFile)) {
     http_response_code(404);
-    exit('404');
+    exit('404 - Controller introuvable');
 }
 
 require $controllerFile;
@@ -24,7 +22,7 @@ $instance = new $controllerName();
 
 if (!method_exists($instance, $method)) {
     http_response_code(404);
-    exit('404');
+    exit('404 - Méthode introuvable');
 }
 
 $instance->$method();

@@ -7,6 +7,11 @@ class LoginController
 {
     public function index()
     {
+        if (isset($_SESSION['user_id'])) {
+            header("Location: /home/index");
+            exit;
+        }
+
         $html = '
             <h2>Connexion</h2>
             <form action="/login/submit" method="POST">
@@ -21,24 +26,28 @@ class LoginController
 
     public function submit()
     {
-        $u = $_POST['username'] ?? '';
-        $p = $_POST['password'] ?? '';
+        $u = isset($_POST['username']) ? trim($_POST['username']) : '';
+        $p = isset($_POST['password']) ? trim($_POST['password']) : '';
 
-        if (!$u || !$p) {
-            exit("Champs manquants");
+        if ($u === '' || $p === '') {
+            View::render("<p>Champs manquants.</p>");
+            return;
         }
 
         $user = User::findByUsername($u);
         if (!$user) {
-            exit("Utilisateur inconnu");
+            View::render("<p>Utilisateur inconnu.</p>");
+            return;
         }
 
         if (!password_verify($p, $user['password'])) {
-            exit("Mot de passe incorrect");
+            View::render("<p>Mot de passe incorrect.</p>");
+            return;
         }
 
         $_SESSION['user_id'] = $user['id'];
 
-        View::render("<p>Connexion OK</p>");
+        header("Location: /home/index");
+        exit;
     }
 }
