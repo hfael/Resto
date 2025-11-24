@@ -1,18 +1,22 @@
 <?php
 
 require_once __DIR__ . '/../Models/User.php';
+require_once __DIR__ . '/../View.php';
 
 class LoginController
 {
     public function index()
     {
-        echo '
+        $html = '
+            <h2>Connexion</h2>
             <form action="/login/submit" method="POST">
                 <input type="text" name="username" placeholder="Nom" />
                 <input type="password" name="password" placeholder="Mot de passe" />
                 <button type="submit">Connexion</button>
             </form>
         ';
+
+        View::render($html);
     }
 
     public function submit()
@@ -33,9 +37,8 @@ class LoginController
             exit("Mot de passe incorrect");
         }
 
-        session_start();
         $_SESSION['user_id'] = $user['id'];
 
-        echo "Connexion OK";
+        View::render("<p>Connexion OK</p>");
     }
 }

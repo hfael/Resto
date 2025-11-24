@@ -1,26 +1,38 @@
 <?php
 
 require_once __DIR__ . '/../Models/Reservation.php';
+require_once __DIR__ . '/../View.php';
+require_once __DIR__ . '/../Database.php';
 
 class ReservationController
 {
     public function index()
     {
-        session_start();
-        if (!isset($_SESSION['user_id'])) exit("Accès refusé");
+        if (!isset($_SESSION['user_id'])){
+            header("Location: /login/index");
+            exit;
+        }
 
         $items = Reservation::allByUser($_SESSION['user_id']);
 
+        $html = "<h2>Mes réservations</h2>";
+
         foreach ($items as $r) {
-            echo $r['date_reservation'].' '.$r['time_reservation'].' - '.$r['guests'].' personnes<br>';
+            $html .= $r['date_reservation'] . " " . $r['time_reservation'];
+            $html .= " – " . $r['guests'] . " personnes<br>";
         }
 
-        echo '<br><a href="/reservation/create">Nouvelle réservation</a>';
+        $html .= '<br><a href="/reservation/create">Nouvelle réservation</a>';
+
+        View::render($html);
     }
 
     public function create()
     {
-        echo '
+        if (!isset($_SESSION['user_id'])) exit("Accès refusé");
+
+        $html = '
+            <h2>Nouvelle réservation</h2>
             <form action="/reservation/store" method="POST">
                 <input type="date" name="date_reservation" />
                 <input type="time" name="time_reservation" />
@@ -28,21 +40,24 @@ class ReservationController
                 <button type="submit">Réserver</button>
             </form>
         ';
+
+        View::render($html);
     }
 
     public function store()
     {
-        session_start();
         if (!isset($_SESSION['user_id'])) exit("Accès refusé");
 
-        $date  = $_POST['date_reservation'] ?? '';
-        $time  = $_POST['time_reservation'] ?? '';
+        $date   = $_POST['date_reservation'] ?? '';
+        $time   = $_POST['time_reservation'] ?? '';
         $guests = $_POST['guests'] ?? '';
 
-        if (!$date || !$time || !$guests) exit("Champs manquants");
+        if (!$date || !$time || !$guests) {
+            exit("Champs manquants");
+        }
 
         Reservation::create($_SESSION['user_id'], $date, $time, $guests);
 
-        echo "Réservation enregistrée";
+        View::render("<p>Réservation enregistrée</p>");
     }
 }
