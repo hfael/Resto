@@ -13,7 +13,7 @@ class HomeController
                 <h1>Bienvenue</h1>
                 <p>Vous êtes connecté.</p>
                 <p>
-                    <a href='/dish/index'>Voir les plats</a><br>
+                    <a href='/restaurant/index'>Voir les restaurants</a><br>
                     <a href='/reservation/index'>Voir mes réservations</a>
                 </p>
             ";

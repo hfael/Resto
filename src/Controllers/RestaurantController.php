@@ -121,23 +121,58 @@ class RestaurantController
 
         $html = '
             <h2>Ajouter un restaurant</h2>
+
             <form action="/restaurant/store" method="POST" enctype="multipart/form-data">
                 <input type="text" name="name" placeholder="Nom"><br>
                 <textarea name="description" placeholder="Description"></textarea><br>
                 <input type="date" name="event_date"><br>
                 <input type="number" name="average_price" placeholder="Prix moyen"><br>
-                <input type="text" name="latitude" placeholder="Latitude"><br>
-                <input type="text" name="longitude" placeholder="Longitude"><br>
+
+                <p>Latitude :</p>
+                <input type="text" id="lat" name="latitude" placeholder="Latitude" readonly><br>
+
+                <p>Longitude :</p>
+                <input type="text" id="lng" name="longitude" placeholder="Longitude" readonly><br><br>
+
+                <div id="map" style="height:300px; margin-bottom:15px;"></div>
+
                 <input type="text" name="contact_name" placeholder="Contact"><br>
                 <input type="email" name="contact_email" placeholder="Email contact"><br>
+
                 <p>Photo :</p>
                 <input type="file" name="photo"><br><br>
+
                 <button type="submit">Créer</button>
             </form>
+
+            <script>
+                const map = L.map("map").setView([48.8566, 2.3522], 13);
+
+                L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+                    maxZoom: 19
+                }).addTo(map);
+
+                let marker;
+
+                map.on("click", function(e) {
+                    const lat = e.latlng.lat.toFixed(7);
+                    const lng = e.latlng.lng.toFixed(7);
+
+                    document.getElementById("lat").value = lat;
+                    document.getElementById("lng").value = lng;
+
+                    if (marker) {
+                        marker.setLatLng(e.latlng);
+                    } else {
+                        marker = L.marker(e.latlng).addTo(map);
+                    }
+                });
+            </script>
         ';
 
         View::render($html);
     }
+
 
     public function store()
     {
@@ -192,13 +227,21 @@ class RestaurantController
 
         $html = '
             <h2>Modifier un restaurant</h2>
+
             <form action="/restaurant/update?id=' . $id . '" method="POST" enctype="multipart/form-data">
                 <input type="text" name="name" value="' . $r['name'] . '"><br>
                 <textarea name="description">' . $r['description'] . '</textarea><br>
                 <input type="date" name="event_date" value="' . $r['event_date'] . '"><br>
                 <input type="number" name="average_price" value="' . $r['average_price'] . '"><br>
-                <input type="text" name="latitude" value="' . $r['latitude'] . '"><br>
-                <input type="text" name="longitude" value="' . $r['longitude'] . '"><br>
+
+                <p>Latitude :</p>
+                <input type="text" id="lat" name="latitude" value="' . $r['latitude'] . '" readonly><br>
+
+                <p>Longitude :</p>
+                <input type="text" id="lng" name="longitude" value="' . $r['longitude'] . '" readonly><br><br>
+
+                <div id="map" style="height:300px; margin-bottom:15px;"></div>
+
                 <input type="text" name="contact_name" value="' . $r['contact_name'] . '"><br>
                 <input type="email" name="contact_email" value="' . $r['contact_email'] . '"><br>
 
@@ -210,10 +253,34 @@ class RestaurantController
 
                 <button type="submit">Sauvegarder</button>
             </form>
+
+            <script>
+                const initialLat = ' . $r['latitude'] . ';
+                const initialLng = ' . $r['longitude'] . ';
+
+                const map = L.map("map").setView([initialLat, initialLng], 13);
+
+                L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+                    maxZoom: 19
+                }).addTo(map);
+
+                let marker = L.marker([initialLat, initialLng]).addTo(map);
+
+                map.on("click", function(e) {
+                    const lat = e.latlng.lat.toFixed(7);
+                    const lng = e.latlng.lng.toFixed(7);
+
+                    document.getElementById("lat").value = lat;
+                    document.getElementById("lng").value = lng;
+
+                    marker.setLatLng(e.latlng);
+                });
+            </script>
         ';
 
         View::render($html);
     }
+
 
     public function update()
     {

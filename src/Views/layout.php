@@ -2,19 +2,21 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>Restaurant</title>
+    <title>Resto</title>
 </head>
 <body>
 
 <?php
 $connected = isset($_SESSION['user_id']);
 ?>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
 <header>
     <a href="/home/index">Accueil</a>
 
     <?php if ($connected): ?>
-        <a href="/dish/index">Plats</a>
+        <a href="/restaurant/index">Restaurants</a>
         <a href="/reservation/index">Réservations</a>
         <a href="/logout/index">Déconnexion</a>
     <?php else: ?>
@@ -28,7 +30,7 @@ $connected = isset($_SESSION['user_id']);
 </main>
 
 <footer>
-    © Restaurant – Projet Étudiant
+    © Resto – Projet CESI - HENINE Fael
 </footer>
 
 </body>
