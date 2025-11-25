@@ -100,6 +100,7 @@ class RestaurantController
         }
 
         $html = "<h2>Détails du restaurant</h2>";
+        $html .= "<a href='/pdf/restaurant?id={$r['id']}' target='_blank'>Exporter en PDF</a><br><br>";
 
         $html .= "<img src='" . $r['photo'] . "' width='300'><br><br>";
 
