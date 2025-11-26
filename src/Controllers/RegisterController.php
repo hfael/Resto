@@ -16,21 +16,29 @@ class RegisterController
             <h2>Inscription</h2>
             <form action="/register/submit" method="POST">
                 <input type="text" name="username" placeholder="Nom" />
+                <input type="email" name="email" placeholder="Email" />
                 <input type="password" name="password" placeholder="Mot de passe" />
                 <button type="submit">OK</button>
             </form>
         ';
+
 
         View::render($html);
     }
 
     public function submit()
     {
-        $u = isset($_POST['username']) ? trim($_POST['username']) : '';
-        $p = isset($_POST['password']) ? trim($_POST['password']) : '';
+        $u = trim($_POST['username'] ?? '');
+        $e = trim($_POST['email'] ?? '');
+        $p = trim($_POST['password'] ?? '');
 
-        if ($u === '' || $p === '') {
+        if ($u === '' || $e === '' || $p === '') {
             View::render("<p>Champs manquants.</p>");
+            return;
+        }
+
+        if (!filter_var($e, FILTER_VALIDATE_EMAIL)) {
+            View::render("<p>Email invalide.</p>");
             return;
         }
 
@@ -44,14 +52,21 @@ class RegisterController
             return;
         }
 
-        $existing = User::findByUsername($u);
-        if ($existing) {
+        $existingName = User::findByUsername($u);
+        if ($existingName) {
             View::render("<p>Nom d'utilisateur déjà utilisé.</p>");
             return;
         }
 
+        $existingMail = User::findByEmail($e);
+        if ($existingMail) {
+            View::render("<p>Email déjà utilisé.</p>");
+            return;
+        }
+
         $hash = password_hash($p, PASSWORD_BCRYPT);
-        User::create($u, $hash);
+
+        User::create($u, $e, $hash);
 
         header("Location: /login/index");
         exit;

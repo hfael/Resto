@@ -46,6 +46,9 @@ class LoginController
         }
 
         $_SESSION['user_id'] = $user['id'];
+        $_SESSION['user_email'] = $user['email'];
+        $_SESSION['user_role'] = $user['role'];
+        
 
         header("Location: /home/index");
         exit;

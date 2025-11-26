@@ -31,7 +31,7 @@ class PDFController
             <h1>{$r['name']}</h1>
             <img src='{$base64Image}' width='300'>
             <p><strong>Description :</strong> {$r['description']}</p>
-            <p><strong>Date :</strong> {$r['event_date']}</p>
+            <p><strong>Date d'ajout:</strong> {$r['event_date']}</p>
             <p><strong>Prix moyen :</strong> {$r['average_price']} €</p>
             <p><strong>Latitude :</strong> {$r['latitude']}</p>
             <p><strong>Longitude :</strong> {$r['longitude']}</p>

@@ -13,6 +13,56 @@ class RestaurantController
         }
     }
 
+    public function my()
+    {
+        $this->requireLogin();
+
+        $items = Restaurant::allByOwner($_SESSION['user_id']);
+
+        $html = '<h2>Mes restaurants</h2>';
+
+        foreach ($items as $r) {
+            $html .= '<div style="margin-bottom:20px; padding:10px; border:1px solid #ddd; width:300px">';
+            $html .= '<img src="' . $r['photo'] . '" width="120"><br>';
+            $html .= '<strong>' . $r['name'] . '</strong><br>';
+            $html .= substr($r['description'], 0, 60) . '<br>';
+
+            if ($r['status'] === 'pending') {
+                $html .= '<span style="color:orange">En attente</span><br>';
+                $html .= '<a href="/restaurant/cancel?id=' . $r['id'] . '">Annuler</a>';
+            }
+
+            if ($r['status'] === 'accepted') {
+                $html .= '<span style="color:green">Accepté</span><br>';
+                $html .= '<a href="/restaurant/show?id=' . $r['id'] . '">Voir</a><br>';
+                $html .= '<a href="/restaurant/edit?id=' . $r['id'] . '">Modifier</a><br>';
+                $html .= '<a href="/restaurant/delete?id=' . $r['id'] . '">Supprimer</a>';
+            }
+
+            if ($r['status'] === 'rejected') {
+                $html .= '<span style="color:red">Refusé</span><br>';
+                if (!empty($r['rejection_reason'])) {
+                    $html .= '<em>' . $r['rejection_reason'] . '</em><br>';
+                }
+                $html .= '<a href="/restaurant/edit?id=' . $r['id'] . '">Corriger et renvoyer</a>';
+            }
+
+            if ($r['status'] === 'cancelled') {
+                $html .= '<span style="color:gray">Annulé</span>';
+            }
+
+            $html .= '</div>';
+        }
+
+        if (empty($items)) {
+            $html .= '<p>Aucun restaurant.</p>';
+        }
+
+        View::render($html);
+    }
+
+
+
     public function index()
     {
         $html = '
@@ -22,7 +72,7 @@ class RestaurantController
 
         <div id="results">';
 
-        $items = Restaurant::all();
+        $items = Restaurant::allAccepted();
 
         foreach ($items as $r) {
             $html .= $r['name'] . " - " . $r['average_price'] . "€ ";
@@ -106,7 +156,7 @@ class RestaurantController
 
         $html .= "<p><strong>Nom :</strong> " . $r['name'] . "</p>";
         $html .= "<p><strong>Description :</strong> " . $r['description'] . "</p>";
-        $html .= "<p><strong>Date :</strong> " . $r['event_date'] . "</p>";
+        $html .= "<p><strong>Date d'ajout:</strong> " . $r['event_date'] . "</p>";
         $html .= "<p><strong>Prix moyen :</strong> " . $r['average_price'] . "€</p>";
         $html .= "<p><strong>Latitude :</strong> " . $r['latitude'] . "</p>";
         $html .= "<p><strong>Longitude :</strong> " . $r['longitude'] . "</p>";
@@ -282,7 +332,6 @@ class RestaurantController
         View::render($html);
     }
 
-
     public function update()
     {
         $this->requireLogin();
@@ -293,35 +342,52 @@ class RestaurantController
             return;
         }
 
+        $r = Restaurant::find($id);
+        if (!$r) {
+            View::render("<p>Introuvable.</p>");
+            return;
+        }
+
+        if ($r['created_by'] != $_SESSION['user_id'] && (!isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'admin')) {
+            http_response_code(403);
+            exit;
+        }
+
+        if ($r['status'] === 'pending' || $r['status'] === 'cancelled') {
+            http_response_code(403);
+            exit;
+        }
+
         $data = $_POST;
+        $currentPhoto = $r['photo'];
 
         if (isset($_FILES['photo']) && $_FILES['photo']['error'] === UPLOAD_ERR_OK) {
             $file = $_FILES['photo'];
-            $allowed = ['image/jpeg', 'image/png', 'image/webp'];
-
-            if (!in_array($file['type'], $allowed)) {
-                View::render("<p>Format d'image non supporté.</p>");
-                return;
+            $allowed = ['image/jpeg','image/png','image/webp'];
+            if (in_array($file['type'], $allowed)) {
+                $ext = pathinfo($file['name'], PATHINFO_EXTENSION);
+                $newName = 'restaurant_' . time() . '_' . rand(1000,9999) . '.' . $ext;
+                $uploadPath = '/var/www/html/uploads/' . $newName;
+                if (move_uploaded_file($file['tmp_name'], $uploadPath)) {
+                    $data['photo'] = '/uploads/' . $newName;
+                }
             }
-
-            $ext = pathinfo($file['name'], PATHINFO_EXTENSION);
-            $newName = 'restaurant_' . time() . '_' . rand(1000,9999) . '.' . $ext;
-
-            $uploadPath = '/var/www/html/uploads/' . $newName;
-
-            if (!move_uploaded_file($file['tmp_name'], $uploadPath)) {
-                View::render("<p>Impossible de sauvegarder l'image.</p>");
-                return;
-            }
-
-            $data['photo'] = '/uploads/' . $newName;
         }
 
-        Restaurant::update($id, $data);
+        if (!isset($data['photo']) || !$data['photo']) {
+            $data['photo'] = $currentPhoto;
+        }
 
-        header("Location: /restaurant/index");
+        if ($r['status'] === 'rejected') {
+            Restaurant::resubmit($id, $data);
+        } else {
+            Restaurant::update($id, $data);
+        }
+
+        header("Location: /restaurant/my");
         exit;
     }
+
 
     public function delete()
     {
@@ -336,6 +402,70 @@ class RestaurantController
         Restaurant::delete($id);
 
         header("Location: /restaurant/index");
+        exit;
+    }
+    public function cancel()
+    {
+        $this->requireLogin();
+
+        $id = $_GET['id'] ?? null;
+        if (!$id) {
+            http_response_code(400);
+            exit;
+        }
+
+        $r = Restaurant::find($id);
+        if (!$r) {
+            http_response_code(404);
+            exit;
+        }
+
+        if ($r['created_by'] != $_SESSION['user_id']) {
+            http_response_code(403);
+            exit;
+        }
+
+        if ($r['status'] !== 'pending') {
+            http_response_code(403);
+            exit;
+        }
+
+        Restaurant::cancel($id);
+
+        header("Location: /restaurant/my");
+        exit;
+    }
+
+    public function accept()
+    {
+        if (!isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'admin') {
+            http_response_code(403);
+            exit;
+        }
+
+        $id = $_GET['id'] ?? null;
+        if ($id) {
+            Restaurant::accept($id);
+        }
+
+        header("Location: /admin/restaurants");
+        exit;
+    }
+    public function reject()
+    {
+        if (!isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'admin') {
+            http_response_code(403);
+            exit;
+        }
+
+        $id = $_GET['id'] ?? null;
+        $reason = $_POST['reason'] ?? '';
+
+        if ($id && $reason !== '') {
+            Restaurant::reject($id, $reason);
+        }
+
+        header("Location: /admin/restaurants");
         exit;
     }
 }
