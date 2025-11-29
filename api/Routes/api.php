@@ -4,10 +4,12 @@ namespace API\Routes;
 require_once __DIR__ . '/../Helpers/Response.php';
 require_once __DIR__ . '/../Controllers/AuthApiController.php';
 require_once __DIR__ . '/../Controllers/RestaurantApiController.php';
+require_once __DIR__ . '/../Middleware/JwtMiddleware.php';
 
 use API\Helpers\Response;
 use API\Controllers\AuthApiController;
 use API\Controllers\RestaurantApiController;
+use API\Middleware\JwtMiddleware;
 
 class ApiRouter {
 
@@ -38,7 +40,8 @@ class ApiRouter {
         }
 
         if ($path === '/api/restaurants' && $method === 'POST') {
-            (new RestaurantApiController)->store();
+            $user = JwtMiddleware::protect();
+            (new RestaurantApiController)->store($user);
             return;
         }
 

@@ -1,31 +1,40 @@
 <?php
+namespace API\Helpers;
 
-class JwtHelper
-{
-    private static $key = 'RESTO_SECRET_KEY_2025';
+class JwtHelper {
 
-    public static function generate($payload)
-    {
-        $header = base64_encode(json_encode(['alg'=>'HS256','typ'=>'JWT']));
-        $body = base64_encode(json_encode($payload));
-        $sig = hash_hmac('sha256', "$header.$body", self::$key, true);
-        $sig = base64_encode($sig);
-        return "$header.$body.$sig";
+    private static $key = "RESTO_API_SECRET_KEY_2025_981273";
+
+    public static function generate($payload) {
+        $header = json_encode(['alg' => 'HS256', 'typ' => 'JWT']);
+        $h = rtrim(strtr(base64_encode($header), '+/', '-_'), '=');
+
+        $payload['exp'] = time() + 3600;
+        $p = rtrim(strtr(base64_encode(json_encode($payload)), '+/', '-_'), '=');
+
+        $signature = hash_hmac('sha256', "$h.$p", self::$key, true);
+        $s = rtrim(strtr(base64_encode($signature), '+/', '-_'), '=');
+
+        return "$h.$p.$s";
     }
 
-    public static function verify($jwt)
-    {
+    public static function verify($jwt) {
         $parts = explode('.', $jwt);
         if (count($parts) !== 3) return false;
 
-        $header = $parts[0];
-        $body = $parts[1];
-        $sig = $parts[2];
+        list($h, $p, $s) = $parts;
 
-        $check = base64_encode(hash_hmac('sha256', "$header.$body", self::$key, true));
+        $expected = rtrim(strtr(
+            base64_encode(
+                hash_hmac('sha256', "$h.$p", self::$key, true)
+            ), '+/', '-_'), '=');
 
-        if (!hash_equals($check, $sig)) return false;
+        if (!hash_equals($expected, $s)) return false;
 
-        return json_decode(base64_decode($body), true);
+        $payload = json_decode(base64_decode(strtr($p, '-_', '+/')), true);
+
+        if (!isset($payload['exp']) || $payload['exp'] < time()) return false;
+
+        return $payload;
     }
 }
