@@ -77,8 +77,16 @@ class RestaurantController
         foreach ($items as $r) {
             $html .= $r['name'] . " - " . $r['average_price'] . "€ ";
             $html .= '<a href="/restaurant/show?id=' . $r['id'] . '">Détails</a> ';
-            $html .= '<a href="/restaurant/edit?id=' . $r['id'] . '">Modifier</a> ';
-            $html .= '<a href="/restaurant/delete?id=' . $r['id'] . '">Supprimer</a><br>';
+
+            if (isset($_SESSION['user_role']) && $_SESSION['user_role'] === 'admin') {
+                $html .= '<a href="/restaurant/edit?id=' . $r['id'] . '">Modifier</a> ';
+                $html .= '<a href="/restaurant/delete?id=' . $r['id'] . '">Supprimer</a>';
+            } else if ($r['created_by'] == $_SESSION['user_id']) {
+                $html .= '<a href="/restaurant/edit?id=' . $r['id'] . '">Modifier</a> ';
+                $html .= '<a href="/restaurant/delete?id=' . $r['id'] . '">Supprimer</a>';
+            }
+
+            $html .= '<br>';
         }
 
         $html .= '</div>';

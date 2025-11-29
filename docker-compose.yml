@@ -6,6 +6,7 @@ services:
       - ./public:/var/www/html
       - ./src:/var/www/src
       - ./config:/var/www/config
+      - ./api:/var/www/html/api
     ports:
       - "8080:80"
     depends_on:
