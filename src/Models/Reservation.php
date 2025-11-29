@@ -40,4 +40,12 @@ class Reservation
         $stmt = $db->prepare("DELETE FROM reservations WHERE reservation_date < CURDATE()");
         $stmt->execute();
     }
+
+    public static function delete($id, $userId)
+    {
+        $db = Database::getConnection();
+        $stmt = $db->prepare("DELETE FROM reservations WHERE id = ? AND user_id = ?");
+        return $stmt->execute([$id, $userId]);
+    }
+
 }

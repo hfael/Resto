@@ -8,6 +8,7 @@ $segments = explode('/', $uri);
 $controller = $segments[0] ?: 'home';
 $method     = $segments[1] ?? 'index';
 
+
 $controllerName = ucfirst($controller) . 'Controller';
 $controllerFile = __DIR__ . '/../src/Controllers/' . $controllerName . '.php';
 

@@ -32,6 +32,7 @@ class ReservationController
                     Date : {$r['reservation_date']}<br>
                     Heure : {$r['reservation_time']}<br>
                     Code : {$r['code']}
+                    <a href='/reservation/delete?id={$r['id']}'>Supprimer</a>
                 </p><hr>";
         }
 
@@ -64,6 +65,8 @@ class ReservationController
 
     public function store()
     {
+
+
         $this->requireLogin();
 
         $code = strtoupper(bin2hex(random_bytes(4)));  
@@ -86,6 +89,22 @@ class ReservationController
             <p>Code : <strong>$code</strong></p>
             "
         );
+
+        header("Location: /reservation/index");
+        exit;
+    }
+
+    public function delete()
+    {
+        $this->requireLogin();
+
+        $id = $_GET['id'] ?? null;
+        if (!$id) {
+            http_response_code(400);
+            exit;
+        }
+
+        Reservation::delete($id, $_SESSION['user_id']);
 
         header("Location: /reservation/index");
         exit;
