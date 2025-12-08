@@ -1,1 +1,1 @@
-/api/restaurants
+/api/reservations/user

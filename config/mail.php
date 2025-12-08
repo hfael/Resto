@@ -1,11 +1,8 @@
 <?php
 
 return [
-    'host'       => 'smtp.mailtrap.io',
-    'port'       => 2525,
-    'username'   => 'smtp@mailtrap.io',
-    'password'   => '4a7831d19018c80510da23644be7b187',
-    
-    'from_email' => 'no-reply@resto-app.test',
+    'api_token'  => '4a7831d19018c80510da23644be7b187', // Copie depuis "Mailtrap → Email Sending → API Token"
+
+    'from_email' => 'hello@demomailtrap.co',
     'from_name'  => 'Resto App'
 ];

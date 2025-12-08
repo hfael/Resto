@@ -36,7 +36,9 @@ class RestaurantController
                 $html .= '<span style="color:green">Accepté</span><br>';
                 $html .= '<a href="/restaurant/show?id=' . $r['id'] . '">Voir</a><br>';
                 $html .= '<a href="/restaurant/edit?id=' . $r['id'] . '">Modifier</a><br>';
-                $html .= '<a href="/restaurant/delete?id=' . $r['id'] . '">Supprimer</a>';
+                $html .= '<a href="/restaurant/delete?id=' . $r['id'] . '">Supprimer</a><br>';
+                $html .= '<a href="/reservation/byRestaurant?id=' . $r['id'] . '">Voir les réservations</a><br>';
+
             }
 
             if ($r['status'] === 'rejected') {

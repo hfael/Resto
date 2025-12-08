@@ -109,4 +109,99 @@ class ReservationController
         header("Location: /reservation/index");
         exit;
     }
+    public function byRestaurant()
+    {
+        $this->requireLogin();
+
+        $restaurant_id = $_GET['id'] ?? null;
+        if (!$restaurant_id) {
+            View::render("<p>ID manquant.</p>");
+            return;
+        }
+
+        // Vérifier ownership
+        $db = Database::getConnection();
+        $stmt = $db->prepare("SELECT owner_id FROM restaurants WHERE id=?");
+        $stmt->execute([$restaurant_id]);
+        $owner_id = $stmt->fetchColumn();
+
+        if (!$owner_id) {
+            View::render("<p>Restaurant introuvable.</p>");
+            return;
+        }
+
+        if ($owner_id != $_SESSION['user_id']) {
+            http_response_code(403);
+            exit("Accès refusé");
+        }
+
+        // Récupérer les réservations associées
+        $stmt = $db->prepare("
+            SELECT 
+                r.id,
+                r.reservation_date,
+                r.reservation_time,
+                r.code,
+                u.username,
+                u.email
+            FROM reservations r
+            JOIN users u ON u.id = r.user_id
+            WHERE r.restaurant_id = ?
+            ORDER BY r.reservation_date ASC, r.reservation_time ASC
+        ");
+        $stmt->execute([$restaurant_id]);
+        $items = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        $html = "<h2>Réservations du restaurant #$restaurant_id</h2>";
+
+        if (empty($items)) {
+            $html .= "<p>Aucune réservation.</p>";
+            View::render($html);
+            return;
+        }
+
+        foreach ($items as $r) {
+            $html .= "
+                <div style='margin-bottom:10px; padding:10px; border:1px solid #ccc'>
+                    <strong>Utilisateur :</strong> {$r['username']} ({$r['email']})<br>
+                    <strong>Date :</strong> {$r['reservation_date']}<br>
+                    <strong>Heure :</strong> {$r['reservation_time']}<br>
+                    <strong>Code :</strong> {$r['code']}<br><br>
+
+                    <a href='/reservation/deleteByOwner?id={$r['id']}&restaurant_id={$restaurant_id}'>Supprimer</a>
+                </div>
+            ";
+        }
+        View::render($html);
+    }
+    public function deleteByOwner()
+    {
+        $this->requireLogin();
+
+        $reservation_id = $_GET['id'] ?? null;
+        $restaurant_id  = $_GET['restaurant_id'] ?? null;
+
+        if (!$reservation_id || !$restaurant_id) {
+            http_response_code(400);
+            exit("Paramètres manquants");
+        }
+
+        $db = Database::getConnection();
+        $stmt = $db->prepare("SELECT owner_id FROM restaurants WHERE id=?");
+        $stmt->execute([$restaurant_id]);
+        $owner_id = $stmt->fetchColumn();
+
+        if ($owner_id != $_SESSION['user_id']) {
+            http_response_code(403);
+            exit("Accès refusé");
+        }
+
+        $stmt = $db->prepare("DELETE FROM reservations WHERE id=?");
+        $stmt->execute([$reservation_id]);
+
+        header("Location: /reservation/byRestaurant?id=" . $restaurant_id);
+        exit;
+    }
+
+
 }

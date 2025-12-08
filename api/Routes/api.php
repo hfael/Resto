@@ -5,11 +5,13 @@ require_once __DIR__ . '/../Helpers/Response.php';
 require_once __DIR__ . '/../Controllers/AuthApiController.php';
 require_once __DIR__ . '/../Controllers/RestaurantApiController.php';
 require_once __DIR__ . '/../Middleware/JwtMiddleware.php';
+require_once __DIR__ . '/../Controllers/ReservationApiController.php';
 
 use API\Helpers\Response;
 use API\Controllers\AuthApiController;
 use API\Controllers\RestaurantApiController;
 use API\Middleware\JwtMiddleware;
+use API\Controllers\ReservationApiController;
 
 class ApiRouter {
 
@@ -61,6 +63,29 @@ class ApiRouter {
                 (new RestaurantApiController)->delete($m[1]);
                 return;
             }
+        }
+        if ($path === '/api/reservations' && $method === 'POST') {
+            $user = JwtMiddleware::protect();
+            (new ReservationApiController)->store($user);
+            return;
+        }
+
+        if ($path === '/api/reservations/user' && $method === 'GET') {
+            $user = JwtMiddleware::protect();
+            (new ReservationApiController)->userReservations($user);
+            return;
+        }
+
+        if (preg_match('#^/api/reservations/restaurant/([0-9]+)$#', $path, $m) && $method === 'GET') {
+            $user = JwtMiddleware::protect();
+            (new ReservationApiController)->restaurantReservations($user, $m[1]);
+            return;
+        }
+
+        if (preg_match('#^/api/reservations/([0-9]+)$#', $path, $m) && $method === 'DELETE') {
+            $user = JwtMiddleware::protect();
+            (new ReservationApiController)->delete($user, $m[1]);
+            return;
         }
 
         Response::json(["error" => "Route not found"], 404);
