@@ -1,8 +1,8 @@
 <?php
 
 return [
-    'api_token'  => '4a7831d19018c80510da23644be7b187', // Copie depuis "Mailtrap → Email Sending → API Token"
+    'api_token'  => '4a66cfce36cefc3a98fa29b94db97cce',
 
-    'from_email' => 'hello@demomailtrap.co',
+    'from_email' => 'no-reply@resto-app.test',
     'from_name'  => 'Resto App'
 ];

@@ -78,17 +78,7 @@ class ReservationController
             'reservation_time' => $_POST['reservation_time'],
             'code' => $code
         ]);
-
-        Mailer::send(
-            $_SESSION['user_email'],
-            "Confirmation de réservation",
-            "
-            <h2>Votre réservation est confirmée</h2>
-            <p>Date : {$_POST['reservation_date']}</p>
-            <p>Heure : {$_POST['reservation_time']}</p>
-            <p>Code : <strong>$code</strong></p>
-            "
-        );
+        mail($_SESSION['user_email'], "Réservation confirmée", "<h1>Réservation confirmée</h1><p>Date : {$_POST['reservation_date']}</p><p>Heure : {$_POST['reservation_time']}</p><p>Code : {$code}</p>", "Content-Type: text/html; charset=UTF-8\r\n");
 
         header("Location: /reservation/index");
         exit;
