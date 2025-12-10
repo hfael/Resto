@@ -1,0 +1,50 @@
+{% extends "layout.twig" %}
+
+{% block content %}
+
+<h2>Mes restaurants</h2>
+
+{% if items is empty %}
+    <p>Aucun restaurant.</p>
+{% endif %}
+
+{% for r in items %}
+
+<div style="margin-bottom:20px; padding:10px; border:1px solid #ddd; width:300px">
+
+    <img src="{{ r.photo }}" width="120"><br>
+    <strong>{{ r.name }}</strong><br>
+    {{ r.description|slice(0,60) }}<br>
+
+    {% if r.status == 'pending' %}
+        <span style="color:orange">En attente</span><br>
+        <a href="/restaurant/cancel?id={{ r.id }}">Annuler</a>
+    {% endif %}
+
+    {% if r.status == 'accepted' %}
+        <span style="color:green">Accepté</span><br>
+        <a href="/restaurant/show?id={{ r.id }}">Voir</a><br>
+        <a href="/restaurant/edit?id={{ r.id }}">Modifier</a><br>
+        <a href="/restaurant/delete?id={{ r.id }}">Supprimer</a><br>
+        <a href="/restaurant/bookings?id={{ r.id }}">Voir les réservations</a>
+    {% endif %}
+
+    {% if r.status == 'rejected' %}
+        <span style="color:red">Refusé</span><br>
+
+        {% if r.rejection_reason %}
+            <em>{{ r.rejection_reason }}</em><br>
+        {% endif %}
+
+        <a href="/restaurant/edit?id={{ r.id }}">Corriger et renvoyer</a>
+    {% endif %}
+
+    {% if r.status == 'cancelled' %}
+        <span style="color:gray">Annulé</span>
+    {% endif %}
+
+</div>
+
+{% endfor %}
+
+{% endblock %}

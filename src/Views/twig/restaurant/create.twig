@@ -1,0 +1,55 @@
+{% extends "layout.twig" %}
+
+{% block content %}
+
+<h2>Ajouter un restaurant</h2>
+
+<form action="/restaurant/store" method="POST" enctype="multipart/form-data">
+
+    <input type="text" name="name" placeholder="Nom"><br>
+    <textarea name="description" placeholder="Description"></textarea><br>
+    <input type="date" name="event_date"><br>
+    <input type="number" name="average_price" placeholder="Prix moyen"><br>
+
+    <p>Latitude :</p>
+    <input type="text" id="lat" name="latitude" placeholder="Latitude" readonly><br>
+
+    <p>Longitude :</p>
+    <input type="text" id="lng" name="longitude" placeholder="Longitude" readonly><br><br>
+
+    <div id="map" style="height:300px; margin-bottom:15px;"></div>
+
+    <input type="text" name="contact_name" placeholder="Contact"><br>
+    <input type="email" name="contact_email" placeholder="Email contact"><br>
+
+    <p>Photo :</p>
+    <input type="file" name="photo"><br><br>
+
+    <button type="submit">Créer</button>
+</form>
+
+<script>
+const map = L.map("map").setView([48.8566, 2.3522], 13);
+
+L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    maxZoom: 19
+}).addTo(map);
+
+let marker;
+
+map.on("click", function(e) {
+    const lat = e.latlng.lat.toFixed(7);
+    const lng = e.latlng.lng.toFixed(7);
+
+    document.getElementById("lat").value = lat;
+    document.getElementById("lng").value = lng;
+
+    if (marker) {
+        marker.setLatLng(e.latlng);
+    } else {
+        marker = L.marker(e.latlng).addTo(map);
+    }
+});
+</script>
+
+{% endblock %}

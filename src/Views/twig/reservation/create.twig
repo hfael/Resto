@@ -1,0 +1,27 @@
+{% extends "layout.twig" %}
+
+{% block content %}
+
+<h2>Nouvelle réservation</h2>
+
+<form method="POST" action="/reservation/store">
+
+    <label>Restaurant :</label><br>
+    <select name="restaurant_id">
+        {% for r in restaurants %}
+            <option value="{{ r.id }}">{{ r.name }}</option>
+        {% endfor %}
+    </select>
+    <br><br>
+
+    <label>Date :</label><br>
+    <input type="date" name="reservation_date" required><br><br>
+
+    <label>Heure :</label><br>
+    <input type="time" name="reservation_time" required><br><br>
+
+    <button type="submit">Réserver</button>
+
+</form>
+
+{% endblock %}

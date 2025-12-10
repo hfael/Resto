@@ -1,33 +1,17 @@
 <?php
 
 require_once __DIR__ . '/../View.php';
+require_once __DIR__ . '/../Models/Restaurant.php';
 
 class HomeController
 {
     public function index()
     {
-        $connected = isset($_SESSION['user_id']);
+        $restaurants = Restaurant::allAccepted();
 
-        if ($connected) {
-            $html = "
-                <h1>Bienvenue</h1>
-                <p>Vous êtes connecté.</p>
-                <p>
-                    <a href='/restaurant/index'>Voir les restaurants</a><br>
-                    <a href='/reservation/index'>Voir mes réservations</a>
-                </p>
-            ";
-        } else {
-            $html = "
-                <h1>Bienvenue</h1>
-                <p>Veuillez vous connecter pour accéder aux fonctionnalités.</p>
-                <p>
-                    <a href='/login/index'>Connexion</a><br>
-                    <a href='/register/index'>Inscription</a>
-                </p>
-            ";
-        }
-
-        View::render($html);
+        View::render('home/index.twig', [
+            'restaurants' => $restaurants,
+            'session' => $_SESSION
+        ]);
     }
 }

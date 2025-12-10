@@ -1,0 +1,57 @@
+{% extends "layout.twig" %}
+
+{% block content %}
+<h2>Liste des restaurants</h2>
+
+<input type="text" id="searchInput" placeholder="Rechercher..." style="margin-bottom:10px">
+
+<div id="results">
+    {% for r in items %}
+        {{ r.name }} - {{ r.average_price }}€
+        <a href="/restaurant/show?id={{ r.id }}">Détails</a>
+
+        {% if session.user_role == 'admin' %}
+            <a href="/restaurant/edit?id={{ r.id }}">Modifier</a>
+            <a href="/restaurant/delete?id={{ r.id }}">Supprimer</a>
+
+        {% elseif r.created_by == session.user_id %}
+            <a href="/restaurant/edit?id={{ r.id }}">Modifier</a>
+            <a href="/restaurant/delete?id={{ r.id }}">Supprimer</a>
+        {% endif %}
+
+        <br>
+    {% endfor %}
+</div>
+
+<br>
+<a href="/restaurant/create">Ajouter un restaurant</a>
+
+<script>
+const input = document.getElementById("searchInput");
+const results = document.getElementById("results");
+
+input.addEventListener("input", function() {
+    const q = this.value;
+
+    fetch("/restaurant/search?q=" + encodeURIComponent(q))
+        .then(res => res.json())
+        .then(data => {
+            results.innerHTML = "";
+
+            if (data.length === 0) {
+                results.innerHTML = "<p>Aucun résultat</p>";
+                return;
+            }
+
+            data.forEach(item => {
+                results.innerHTML +=
+                    item.name + " - " + item.average_price + "€ " +
+                    "<a href='/restaurant/show?id=" + item.id + "'>Détails</a> " +
+                    "<a href='/restaurant/edit?id=" + item.id + "'>Modifier</a> " +
+                    "<a href='/restaurant/delete?id=" + item.id + "'>Supprimer</a><br>";
+            });
+        });
+});
+</script>
+
+{% endblock %}

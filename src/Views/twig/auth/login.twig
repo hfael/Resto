@@ -1,0 +1,21 @@
+{% extends "layout.twig" %}
+
+{% block content %}
+
+<h2>Connexion</h2>
+
+<form method="POST" action="/login/authenticate">
+
+    <input type="email" name="email" placeholder="Email" required><br><br>
+
+    <input type="password" name="password" placeholder="Mot de passe" required><br><br>
+
+    <button type="submit">Se connecter</button>
+
+</form>
+
+<p>
+    <a href="/register/index">Créer un compte</a>
+</p>
+
+{% endblock %}

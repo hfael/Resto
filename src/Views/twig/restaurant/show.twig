@@ -1,0 +1,37 @@
+{% extends "layout.twig" %}
+
+{% block content %}
+
+<h2>Détails du restaurant</h2>
+
+<a href="/pdf/restaurant?id={{ r.id }}" target="_blank">Exporter en PDF</a>
+<br><br>
+
+<img src="{{ r.photo }}" width="300"><br><br>
+
+<p><strong>Nom :</strong> {{ r.name }}</p>
+<p><strong>Description :</strong> {{ r.description }}</p>
+<p><strong>Date :</strong> {{ r.event_date }}</p>
+<p><strong>Prix moyen :</strong> {{ r.average_price }} €</p>
+<p><strong>Latitude :</strong> {{ r.latitude }}</p>
+<p><strong>Longitude :</strong> {{ r.longitude }}</p>
+<p><strong>Contact :</strong> {{ r.contact_name }}</p>
+<p><strong>Email :</strong> {{ r.contact_email }}</p>
+
+<hr>
+
+<h3>Réserver</h3>
+
+<form method="POST" action="/reservation/store">
+    <input type="hidden" name="restaurant_id" value="{{ r.id }}">
+
+    <label>Date :</label><br>
+    <input type="date" name="reservation_date" required><br><br>
+
+    <label>Heure :</label><br>
+    <input type="time" name="reservation_time" required><br><br>
+
+    <button type="submit">Réserver</button>
+</form>
+
+{% endblock %}

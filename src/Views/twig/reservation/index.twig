@@ -1,0 +1,20 @@
+{% extends "layout.twig" %}
+
+{% block content %}
+
+<h2>Mes réservations</h2>
+
+{% if items is empty %}
+    <p>Aucune réservation.</p>
+{% endif %}
+
+{% for r in items %}
+    <div style="padding:10px; border:1px solid #ddd; width:300px; margin-bottom:15px;">
+        <strong>{{ r.restaurant_name }}</strong><br>
+        Date : {{ r.reservation_date }}<br>
+        Heure : {{ r.reservation_time }}<br>
+        Code : <strong>{{ r.code }}</strong>
+    </div>
+{% endfor %}
+
+{% endblock %}

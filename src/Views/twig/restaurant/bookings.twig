@@ -1,0 +1,34 @@
+{% extends "layout.twig" %}
+
+{% block content %}
+
+<h2>Réservations du restaurant : {{ restaurant.name }}</h2>
+
+{% if bookings is empty %}
+    <p>Aucune réservation.</p>
+{% endif %}
+
+<table border="1" cellpadding="8" cellspacing="0">
+    <tr>
+        <th>Client</th>
+        <th>Email</th>
+        <th>Date</th>
+        <th>Heure</th>
+        <th>Code</th>
+    </tr>
+
+    {% for b in bookings %}
+    <tr>
+        <td>{{ b.username }}</td>
+        <td>{{ b.email }}</td>
+        <td>{{ b.reservation_date }}</td>
+        <td>{{ b.reservation_time }}</td>
+        <td>{{ b.code }}</td>
+    </tr>
+    {% endfor %}
+</table>
+
+<br>
+<a href="/restaurant/my">Retour</a>
+
+{% endblock %}

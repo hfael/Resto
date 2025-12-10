@@ -1,0 +1,33 @@
+{% extends "layout.twig" %}
+
+{% block content %}
+
+<h2>Validation des restaurants</h2>
+
+{% if items is empty %}
+    <p>Aucun restaurant en attente.</p>
+{% endif %}
+
+{% for r in items %}
+<div style="margin-bottom:20px; padding:10px; border:1px solid #aaa; width:350px;">
+
+    <img src="{{ r.photo }}" width="150"><br>
+    <strong>{{ r.name }}</strong><br>
+
+    Propriétaire : {{ r.owner_name }}<br>
+    Prix moyen : {{ r.average_price }} €<br>
+    Email contact : {{ r.contact_email }}<br><br>
+
+    <a href="/restaurant/show?id={{ r.id }}" target="_blank">Voir</a><br><br>
+
+    <a href="/restaurant/accept?id={{ r.id }}" style="color:green;">Accepter</a><br><br>
+
+    <form method="POST" action="/restaurant/reject?id={{ r.id }}">
+        <textarea name="reason" placeholder="Motif de rejet" required></textarea><br>
+        <button type="submit" style="color:red;">Refuser</button>
+    </form>
+
+</div>
+{% endfor %}
+
+{% endblock %}
