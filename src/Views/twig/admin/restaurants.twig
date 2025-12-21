@@ -1,33 +1,28 @@
 {% extends "layout.twig" %}
 
 {% block content %}
+<h2>Restaurants en attente de validation</h2>
 
-<h2>Validation des restaurants</h2>
+{% for r in pendingItems %}
+    <div style="border: 1px solid #ccc; padding: 15px; margin-bottom: 10px;">
+        <strong>{{ r.name }}</strong> (par {{ r.owner_name }})<br>
+        <img src="{{ r.photo }}" width="100"><br>
+        
+        <div style="margin-top: 10px;">
+            {# Bouton Accepter : On peut utiliser un lien simple ou un formulaire #}
+            <form action="/restaurant/accept?id={{ r.id }}" method="POST" style="display: inline;">
+                <button type="submit" style="background: green; color: white; cursor: pointer;">Accepter</button>
+            </form>
 
-{% if items is empty %}
+            {# Bouton Refuser : Formulaire obligatoire pour la raison #}
+            <form action="/restaurant/reject?id={{ r.id }}" method="POST" style="display: inline; margin-left: 10px;">
+                <input type="text" name="reason" placeholder="Motif du refus" required>
+                <button type="submit" style="background: red; color: white; cursor: pointer;">Refuser</button>
+            </form>
+        </div>
+    </div>
+{% else %}
     <p>Aucun restaurant en attente.</p>
-{% endif %}
-
-{% for r in items %}
-<div style="margin-bottom:20px; padding:10px; border:1px solid #aaa; width:350px;">
-
-    <img src="{{ r.photo }}" width="150"><br>
-    <strong>{{ r.name }}</strong><br>
-
-    Propriétaire : {{ r.owner_name }}<br>
-    Prix moyen : {{ r.average_price }} €<br>
-    Email contact : {{ r.contact_email }}<br><br>
-
-    <a href="/restaurant/show?id={{ r.id }}" target="_blank">Voir</a><br><br>
-
-    <a href="/restaurant/accept?id={{ r.id }}" style="color:green;">Accepter</a><br><br>
-
-    <form method="POST" action="/restaurant/reject?id={{ r.id }}">
-        <textarea name="reason" placeholder="Motif de rejet" required></textarea><br>
-        <button type="submit" style="color:red;">Refuser</button>
-    </form>
-
-</div>
 {% endfor %}
 
 {% endblock %}

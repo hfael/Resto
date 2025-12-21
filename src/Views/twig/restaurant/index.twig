@@ -10,16 +10,14 @@
         {{ r.name }} - {{ r.average_price }}€
         <a href="/restaurant/show?id={{ r.id }}">Détails</a>
 
-        {% if session.user_role == 'admin' %}
-            <a href="/restaurant/edit?id={{ r.id }}">Modifier</a>
-            <a href="/restaurant/delete?id={{ r.id }}">Supprimer</a>
-
-        {% elseif r.created_by == session.user_id %}
+        {% if session.user_role == 'admin' or r.created_by == session.user_id %}
             <a href="/restaurant/edit?id={{ r.id }}">Modifier</a>
             <a href="/restaurant/delete?id={{ r.id }}">Supprimer</a>
         {% endif %}
 
         <br>
+    {% else %}
+        <p>Aucun restaurant disponible.</p>
     {% endfor %}
 </div>
 
@@ -29,6 +27,10 @@
 <script>
 const input = document.getElementById("searchInput");
 const results = document.getElementById("results");
+
+// Stockage des infos de session pour le JS
+const userId = "{{ session.user_id }}";
+const userRole = "{{ session.user_role }}";
 
 input.addEventListener("input", function() {
     const q = this.value;
@@ -44,14 +46,19 @@ input.addEventListener("input", function() {
             }
 
             data.forEach(item => {
-                results.innerHTML +=
-                    item.name + " - " + item.average_price + "€ " +
-                    "<a href='/restaurant/show?id=" + item.id + "'>Détails</a> " +
-                    "<a href='/restaurant/edit?id=" + item.id + "'>Modifier</a> " +
-                    "<a href='/restaurant/delete?id=" + item.id + "'>Supprimer</a><br>";
+                let html = item.name + " - " + item.average_price + "€ ";
+                html += "<a href='/restaurant/show?id=" + item.id + "'>Détails</a> ";
+
+                // Vérification des droits en JS (doit correspondre à la logique PHP/Twig)
+                if (userRole === 'admin' || item.created_by == userId) {
+                    html += "<a href='/restaurant/edit?id=" + item.id + "'>Modifier</a> ";
+                    html += "<a href='/restaurant/delete?id=" + item.id + "'>Supprimer</a>";
+                }
+
+                html += "<br>";
+                results.innerHTML += html;
             });
         });
 });
 </script>
-
 {% endblock %}

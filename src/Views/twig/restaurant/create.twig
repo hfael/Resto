@@ -1,38 +1,42 @@
 {% extends "layout.twig" %}
 
 {% block content %}
+{# Inclusion des ressources Leaflet si elles ne sont pas dans le layout #}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
 <h2>Ajouter un restaurant</h2>
 
 <form action="/restaurant/store" method="POST" enctype="multipart/form-data">
-
-    <input type="text" name="name" placeholder="Nom"><br>
-    <textarea name="description" placeholder="Description"></textarea><br>
-    <input type="date" name="event_date"><br>
-    <input type="number" name="average_price" placeholder="Prix moyen"><br>
+    <input type="text" name="name" placeholder="Nom" required><br>
+    <textarea name="description" placeholder="Description" required></textarea><br>
+    <input type="date" name="event_date" required><br>
+    <input type="number" name="average_price" placeholder="Prix moyen" required><br>
 
     <p>Latitude :</p>
-    <input type="text" id="lat" name="latitude" placeholder="Latitude" readonly><br>
+    <input type="text" id="lat" name="latitude" placeholder="Latitude" readonly required><br>
 
     <p>Longitude :</p>
-    <input type="text" id="lng" name="longitude" placeholder="Longitude" readonly><br><br>
+    <input type="text" id="lng" name="longitude" placeholder="Longitude" readonly required><br><br>
 
-    <div id="map" style="height:300px; margin-bottom:15px;"></div>
+    <div id="map" style="height:300px; margin-bottom:15px; border: 1px solid #ccc;"></div>
 
-    <input type="text" name="contact_name" placeholder="Contact"><br>
-    <input type="email" name="contact_email" placeholder="Email contact"><br>
+    <input type="text" name="contact_name" placeholder="Nom du contact" required><br>
+    <input type="email" name="contact_email" placeholder="Email contact" required><br>
 
     <p>Photo :</p>
-    <input type="file" name="photo"><br><br>
+    <input type="file" name="photo" required><br><br>
 
     <button type="submit">Créer</button>
 </form>
 
 <script>
+// Initialisation de la carte sur Paris par défaut
 const map = L.map("map").setView([48.8566, 2.3522], 13);
 
 L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-    maxZoom: 19
+    maxZoom: 19,
+    attribution: '© OpenStreetMap'
 }).addTo(map);
 
 let marker;
@@ -50,6 +54,11 @@ map.on("click", function(e) {
         marker = L.marker(e.latlng).addTo(map);
     }
 });
+
+// Forcer le redimensionnement au chargement pour éviter les bugs d'affichage
+setTimeout(() => {
+    map.invalidateSize();
+}, 200);
 </script>
 
 {% endblock %}
