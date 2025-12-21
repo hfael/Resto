@@ -11,7 +11,8 @@ class HomeController
 
         View::render('home/index.twig', [
             'restaurants' => $restaurants,
-            'session' => $_SESSION
+            'session'     => $_SESSION,
+            'connected'   => isset($_SESSION['user_id'])
         ]);
     }
 }

@@ -3,6 +3,7 @@ services:
     build: ./docker/php
     container_name: php-app
     volumes:
+      - ./:/var/www
       - ./public:/var/www/html
       - ./src:/var/www/src
       - ./config:/var/www/config

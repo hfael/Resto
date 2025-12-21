@@ -12,18 +12,7 @@ class RegisterController
             exit;
         }
 
-        $html = '
-            <h2>Inscription</h2>
-            <form action="/register/submit" method="POST">
-                <input type="text" name="username" placeholder="Nom" />
-                <input type="email" name="email" placeholder="Email" />
-                <input type="password" name="password" placeholder="Mot de passe" />
-                <button type="submit">OK</button>
-            </form>
-        ';
-
-
-        View::render($html);
+        View::render('auth/register.twig');
     }
 
     public function submit()
@@ -33,39 +22,48 @@ class RegisterController
         $p = trim($_POST['password'] ?? '');
 
         if ($u === '' || $e === '' || $p === '') {
-            View::render("<p>Champs manquants.</p>");
+            View::render('auth/register.twig', [
+                'error' => 'Champs manquants.'
+            ]);
             return;
         }
 
         if (!filter_var($e, FILTER_VALIDATE_EMAIL)) {
-            View::render("<p>Email invalide.</p>");
+            View::render('auth/register.twig', [
+                'error' => 'Email invalide.'
+            ]);
             return;
         }
 
         if (strlen($u) < 3) {
-            View::render("<p>Nom d'utilisateur trop court.</p>");
+            View::render('auth/register.twig', [
+                'error' => "Nom d'utilisateur trop court."
+            ]);
             return;
         }
 
         if (strlen($p) < 4) {
-            View::render("<p>Mot de passe trop court.</p>");
+            View::render('auth/register.twig', [
+                'error' => 'Mot de passe trop court.'
+            ]);
             return;
         }
 
-        $existingName = User::findByUsername($u);
-        if ($existingName) {
-            View::render("<p>Nom d'utilisateur déjà utilisé.</p>");
+        if (User::findByUsername($u)) {
+            View::render('auth/register.twig', [
+                'error' => "Nom d'utilisateur déjà utilisé."
+            ]);
             return;
         }
 
-        $existingMail = User::findByEmail($e);
-        if ($existingMail) {
-            View::render("<p>Email déjà utilisé.</p>");
+        if (User::findByEmail($e)) {
+            View::render('auth/register.twig', [
+                'error' => 'Email déjà utilisé.'
+            ]);
             return;
         }
 
         $hash = password_hash($p, PASSWORD_BCRYPT);
-
         User::create($u, $e, $hash);
 
         header("Location: /login/index");

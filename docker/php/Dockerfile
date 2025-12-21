@@ -7,16 +7,20 @@ RUN apt-get update && apt-get install -y \
     unzip \
     libpng-dev \
     libjpeg-dev \
-    libfreetype6-dev
+    libfreetype6-dev \
+    git \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
 
 RUN docker-php-ext-configure gd --with-freetype --with-jpeg
-
 RUN docker-php-ext-install gd mbstring zip pdo_mysql mysqli
 
 RUN a2enmod rewrite
 
-WORKDIR /var/www/html
-RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
+COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
 WORKDIR /var/www
-RUN composer require dompdf/dompdf
+
+COPY . .
+
+WORKDIR /var/www/html

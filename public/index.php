@@ -2,12 +2,13 @@
 
 session_start();
 
+require_once __DIR__ . '/../vendor/autoload.php';
+
 $uri = trim(parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH), '/');
 $segments = explode('/', $uri);
 
 $controller = $segments[0] ?: 'home';
 $method     = $segments[1] ?? 'index';
-
 
 $controllerName = ucfirst($controller) . 'Controller';
 $controllerFile = __DIR__ . '/../src/Controllers/' . $controllerName . '.php';

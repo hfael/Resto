@@ -5,13 +5,27 @@
 
     {% if connected %}
         <div class="card">
-            <h3>Accès rapide</h3>
-            <a class="btn" href="/restaurant/index">Voir les restaurants</a><br>
-            <a class="btn" href="/reservation/index">Mes réservations</a>
+            <h3>Espace Client</h3>
+            <a class="btn" href="/restaurant/index">Voir tous les restaurants</a><br>
+            <a class="btn" href="/reservation/index">Mes réservations</a><br>
+            <a class="btn" href="/restaurant/my">Mes établissements</a>
         </div>
+
+        {% if session.user_role == 'admin' %}
+            <div class="card" style="border-color: red;">
+                <h3>Administration</h3>
+                <a class="btn" href="/admin/restaurants">Valider les restaurants</a>
+            </div>
+        {% endif %}
+
+        <div class="card">
+            <a href="/logout/index" style="color: gray;">Déconnexion</a>
+        </div>
+
     {% else %}
         <div class="card">
-            <h3>Connexion requise</h3>
+            <h3>Rejoignez-nous</h3>
+            <p>Connectez-vous pour réserver une table ou gérer vos restaurants.</p>
             <a class="btn" href="/login/index">Connexion</a><br>
             <a class="btn" href="/register/index">Inscription</a>
         </div>
