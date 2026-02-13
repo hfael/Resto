@@ -30,3 +30,7 @@ Thumbs.db
 
 # PHP session files (si tu en génères)
 sessions/
+
+# Python venv & cache
+.venv/
+__pycache__/

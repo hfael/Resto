@@ -8,7 +8,7 @@ class Database
     {
         if (self::$pdo === null) {
             self::$pdo = new PDO(
-                "mysql:host=mysql-db;dbname=resto;charset=utf8",
+                "mysql:host=mysql;dbname=resto;charset=utf8",
                 "app",
                 "app",
                 [

@@ -2,6 +2,7 @@
 namespace API\Controllers;
 
 require_once '/var/www/src/Models/Restaurant.php';
+require_once __DIR__.'/../Config/database.php';
 require_once __DIR__ . '/../Helpers/Response.php';
 
 use API\Helpers\Response;

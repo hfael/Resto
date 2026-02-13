@@ -9,18 +9,47 @@ use API\Helpers\Response;
 
 class JwtMiddleware {
 
-    public static function protect() {
-        $headers = getallheaders();
+    private static function getAuthHeader(): ?string {
+        // 1) getallheaders (Apache mod_php)
+        if (function_exists('getallheaders')) {
+            foreach (getallheaders() as $k => $v) {
+                if (strtolower($k) === 'authorization') {
+                    return trim($v);
+                }
+            }
+        }
 
-        if (!isset($headers['Authorization'])) {
+        // 2) PHP-FPM / FastCGI
+        if (!empty($_SERVER['HTTP_AUTHORIZATION'])) {
+            return trim($_SERVER['HTTP_AUTHORIZATION']);
+        }
+
+        // 3) Apache rewrite fallback
+        if (!empty($_SERVER['REDIRECT_HTTP_AUTHORIZATION'])) {
+            return trim($_SERVER['REDIRECT_HTTP_AUTHORIZATION']);
+        }
+
+        // 4) Nginx fastcgi param fallback
+        if (!empty($_SERVER['Authorization'])) {
+            return trim($_SERVER['Authorization']);
+        }
+
+        return null;
+    }
+
+    public static function protect() {
+
+        $authHeader = self::getAuthHeader();
+
+        if (!$authHeader) {
             Response::json(["error" => "missing_token"], 401);
         }
 
-        if (!str_starts_with($headers['Authorization'], 'Bearer ')) {
+        if (!preg_match('/^Bearer\s(\S+)$/', $authHeader, $matches)) {
             Response::json(["error" => "invalid_format"], 401);
         }
 
-        $jwt = substr($headers['Authorization'], 7);
+        $jwt = $matches[1];
         $payload = JwtHelper::verify($jwt);
 
         if (!$payload) {

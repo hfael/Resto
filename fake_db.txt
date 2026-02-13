@@ -1,8 +1,0 @@
-INSERT INTO restaurants
-(name, description, event_date, average_price, latitude, longitude, contact_name, contact_email, photo)
-VALUES
-("Le Bistrot Parisien", "Cuisine française traditionnelle.", "2025-04-12", 35, 48.856613, 2.352222, "Jean Dupont", "contact@bistrotparisien.fr", "/uploads/default1.jpg"),
-
-("Sakura Sushi", "Restaurant japonais moderne avec sushis frais.", "2025-02-10", 42, 35.689487, 139.691706, "Yuki Tanaka", "info@sakurasushi.jp", "/uploads/default2.jpg"),
-
-("Casa Lisboa", "Spécialités portugaises et poissons frais.", "2025-03-04", 32, 38.722252, -9.139337, "Luis Ferreira", "reservas@casalisboa.pt", "/uploads/default3.jpg");
