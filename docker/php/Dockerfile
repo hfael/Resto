@@ -15,11 +15,10 @@ COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
 WORKDIR /var/www
 
+# On copie tout le contenu directement pour éviter l'erreur sur composer.json seul
 COPY . .
 
-RUN composer install
-
-# Apache doit servir /public et non /html
+# Apache doit servir /public
 RUN sed -ri -e 's!/var/www/html!/var/www/public!g' /etc/apache2/sites-available/*.conf
 RUN sed -ri -e 's!/var/www/html!/var/www/public!g' /etc/apache2/apache2.conf
 
