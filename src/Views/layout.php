@@ -116,7 +116,7 @@
 
 <main>
     {% block content %}
-        {# Le contenu des pages filles sera injecté ici #}
+        {# Le contenu des pages sera injecté ici #}
     {% endblock %}
 </main>
 
