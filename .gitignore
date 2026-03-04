@@ -10,7 +10,6 @@ tmp/
 
 # Composer
 /vendor/
-composer.lock
 
 # Node (si utilisé plus tard)
 node_modules/
@@ -34,3 +33,6 @@ sessions/
 # Python venv & cache
 .venv/
 __pycache__/
+
+# Uploaded/generated images
+public/uploads/restaurant_*

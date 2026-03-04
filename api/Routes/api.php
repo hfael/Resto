@@ -3,6 +3,8 @@ namespace API\Routes;
 
 require_once __DIR__ . '/../Helpers/Response.php';
 require_once __DIR__ . '/../Controllers/AuthApiController.php';
+require_once __DIR__ . '/../Controllers/AdminApiController.php';
+require_once __DIR__ . '/../Controllers/PdfApiController.php';
 require_once __DIR__ . '/../Controllers/RestaurantApiController.php';
 require_once __DIR__ . '/../Controllers/ReservationApiController.php';
 require_once __DIR__ . '/../Controllers/TestApiController.php';
@@ -10,6 +12,8 @@ require_once __DIR__ . '/../Middleware/JwtMiddleware.php';
 
 use API\Helpers\Response;
 use API\Controllers\AuthApiController;
+use API\Controllers\AdminApiController;
+use API\Controllers\PdfApiController;
 use API\Controllers\RestaurantApiController;
 use API\Controllers\ReservationApiController;
 use API\Controllers\TestApiController;
@@ -18,8 +22,6 @@ use API\Middleware\JwtMiddleware;
 class ApiRouter {
 
     public function dispatch($method, $path) {
-
-        // AUTH
         if ($path === '/auth/register' && $method === 'POST') {
             (new AuthApiController)->register();
             return;
@@ -30,13 +32,23 @@ class ApiRouter {
             return;
         }
 
+        if ($path === '/auth/logout' && in_array($method, ['POST', 'GET'], true)) {
+            (new AuthApiController)->logout();
+            return;
+        }
+
         if ($path === '/auth/me' && $method === 'GET') {
             $user = JwtMiddleware::protect();
             (new AuthApiController)->me($user);
             return;
         }
 
-        // RESTAURANTS
+        if (preg_match('#^/admin/restaurants/([0-9]+)/status$#', $path, $m) && in_array($method, ['PUT', 'PATCH'], true)) {
+            $user = JwtMiddleware::protect();
+            (new AdminApiController)->updateRestaurantStatus($user, $m[1]);
+            return;
+        }
+
         if ($path === '/restaurants' && $method === 'GET') {
             (new RestaurantApiController)->index();
             return;
@@ -65,7 +77,21 @@ class ApiRouter {
             return;
         }
 
-        if (preg_match('#^/restaurants/([0-9]+)/cancel$#', $path, $m) && $method === 'POST') {
+        if (preg_match('#^/restaurants/([0-9]+)/pdf$#', $path, $m) && $method === 'GET') {
+            (new PdfApiController)->restaurantById($m[1]);
+            return;
+        }
+
+        if ($path === '/pdf/restaurant' && $method === 'GET') {
+            $id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
+            if ($id <= 0) {
+                Response::json(["error" => "missing_id"], 400);
+            }
+            (new PdfApiController)->restaurantById($id);
+            return;
+        }
+
+        if (preg_match('#^/restaurants/([0-9]+)/cancel$#', $path, $m) && in_array($method, ['POST', 'PUT', 'PATCH'], true)) {
             $user = JwtMiddleware::protect();
             (new RestaurantApiController)->cancel($user, $m[1]);
             return;
@@ -106,7 +132,6 @@ class ApiRouter {
             }
         }
 
-        // RESERVATIONS
         if ($path === '/reservations' && $method === 'POST') {
             $user = JwtMiddleware::protect();
             (new ReservationApiController)->store($user);
@@ -131,7 +156,6 @@ class ApiRouter {
             return;
         }
 
-        // TEST routes (dev only)
         if ($path === '/test/seed' && $method === 'POST') {
             (new TestApiController)->seed();
             return;

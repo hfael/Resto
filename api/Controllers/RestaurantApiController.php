@@ -9,7 +9,6 @@ require_once __DIR__ . '/../Helpers/Response.php';
 use API\Helpers\Response;
 
 class RestaurantApiController {
-
     private function getUserRole($user) {
         if (isset($user['role']) && $user['role']) {
             return $user['role'];
@@ -33,14 +32,62 @@ class RestaurantApiController {
         if (stripos($contentType, 'application/json') !== false) {
             return json_decode(file_get_contents('php://input'), true) ?? [];
         }
+        $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
+        if (in_array($method, ['PUT', 'PATCH', 'DELETE'], true)) {
+            $raw = file_get_contents('php://input');
+            $parsed = [];
+            parse_str($raw, $parsed);
+            return $parsed ?: [];
+        }
         return $_POST ?? [];
     }
 
-    private function findRestaurant($id) {
+    private function baseUrl(): string {
+        $forwarded = $_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '';
+        $isHttps = !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off';
+        $scheme = $forwarded ?: ($isHttps ? 'https' : 'http');
+        $host = $_SERVER['HTTP_HOST'] ?? 'localhost:8080';
+        return $scheme . '://' . $host;
+    }
+
+    private function absoluteUrl($path): ?string {
+        if ($path === null || $path === '') {
+            return null;
+        }
+        if (preg_match('#^https?://#i', $path)) {
+            return $path;
+        }
+        return $this->baseUrl() . '/' . ltrim($path, '/');
+    }
+
+    private function formatRestaurant(array $row): array {
+        $imagePath = $row['photo'] ?? ($row['image'] ?? null);
+        $absolute = $this->absoluteUrl($imagePath);
+        $row['photo'] = $absolute;
+        $row['image'] = $absolute;
+        return $row;
+    }
+
+    private function formatRestaurants(array $rows): array {
+        foreach ($rows as $index => $row) {
+            $rows[$index] = $this->formatRestaurant($row);
+        }
+        return $rows;
+    }
+
+    private function findRestaurantRaw($id) {
         $db = \Database::getConnection();
         $stmt = $db->prepare("SELECT * FROM restaurants WHERE id = ?");
         $stmt->execute([$id]);
         return $stmt->fetch(\PDO::FETCH_ASSOC);
+    }
+
+    private function findRestaurant($id) {
+        $row = $this->findRestaurantRaw($id);
+        if (!$row) {
+            return false;
+        }
+        return $this->formatRestaurant($row);
     }
 
     private function canManageRestaurant($user, $restaurant) {
@@ -55,7 +102,7 @@ class RestaurantApiController {
         $db = \Database::getConnection();
         $stmt = $db->query("SELECT * FROM restaurants WHERE status = 'accepted' ORDER BY name ASC");
         $rows = $stmt->fetchAll(\PDO::FETCH_ASSOC);
-        Response::json($rows);
+        Response::json($this->formatRestaurants($rows));
     }
 
     public function search()
@@ -65,10 +112,10 @@ class RestaurantApiController {
             Response::json([]);
         }
         $db = \Database::getConnection();
-        $stmt = $db->prepare("SELECT id, name, average_price, created_by FROM restaurants WHERE status = 'accepted' AND name LIKE ? ORDER BY id DESC");
+        $stmt = $db->prepare("SELECT id, name, average_price, created_by, photo FROM restaurants WHERE status = 'accepted' AND name LIKE ? ORDER BY id DESC");
         $stmt->execute(['%' . $q . '%']);
         $rows = $stmt->fetchAll(\PDO::FETCH_ASSOC);
-        Response::json($rows);
+        Response::json($this->formatRestaurants($rows));
     }
 
     public function mine($user)
@@ -77,7 +124,7 @@ class RestaurantApiController {
         $stmt = $db->prepare("SELECT * FROM restaurants WHERE created_by = ? ORDER BY id DESC");
         $stmt->execute([$user['id']]);
         $rows = $stmt->fetchAll(\PDO::FETCH_ASSOC);
-        Response::json($rows);
+        Response::json($this->formatRestaurants($rows));
     }
 
     public function pending($user)
@@ -88,12 +135,12 @@ class RestaurantApiController {
         $db = \Database::getConnection();
         $stmt = $db->query("SELECT r.*, u.username AS owner_name FROM restaurants r JOIN users u ON u.id = r.created_by WHERE r.status = 'pending' ORDER BY r.created_at ASC");
         $rows = $stmt->fetchAll(\PDO::FETCH_ASSOC);
-        Response::json($rows);
+        Response::json($this->formatRestaurants($rows));
     }
 
     public function bookings($user, $id)
     {
-        $restaurant = $this->findRestaurant($id);
+        $restaurant = $this->findRestaurantRaw($id);
         if (!$restaurant) {
             Response::json(["error" => "not_found"], 404);
         }
@@ -113,7 +160,7 @@ class RestaurantApiController {
         $bookings = $stmt->fetchAll(\PDO::FETCH_ASSOC);
 
         Response::json([
-            "restaurant" => $restaurant,
+            "restaurant" => $this->formatRestaurant($restaurant),
             "bookings" => $bookings
         ]);
     }
@@ -180,10 +227,12 @@ class RestaurantApiController {
         ]);
 
         $id = $db->lastInsertId();
+        $created = $this->findRestaurant($id);
         Response::json([
             "id" => $id,
             "status" => "created",
-            "name" => $name
+            "name" => $name,
+            "restaurant" => $created
         ], 201);
     }
 
@@ -198,7 +247,7 @@ class RestaurantApiController {
 
     public function update($user, $id)
     {
-        $existing = $this->findRestaurant($id);
+        $existing = $this->findRestaurantRaw($id);
         if (!$existing) {
             Response::json(["error" => "not_found"], 404);
         }
@@ -242,12 +291,16 @@ class RestaurantApiController {
             \Restaurant::update($id, $data);
         }
 
-        Response::json(["status" => "updated", "id" => $id]);
+        Response::json([
+            "status" => "updated",
+            "id" => $id,
+            "restaurant" => $this->findRestaurant($id)
+        ]);
     }
 
     public function delete($user, $id)
     {
-        $existing = $this->findRestaurant($id);
+        $existing = $this->findRestaurantRaw($id);
         if (!$existing) {
             Response::json(["error" => "not_found"], 404);
         }
@@ -262,7 +315,7 @@ class RestaurantApiController {
 
     public function cancel($user, $id)
     {
-        $existing = $this->findRestaurant($id);
+        $existing = $this->findRestaurantRaw($id);
         if (!$existing) {
             Response::json(["error" => "not_found"], 404);
         }
@@ -285,7 +338,7 @@ class RestaurantApiController {
             Response::json(["error" => "forbidden"], 403);
         }
 
-        $existing = $this->findRestaurant($id);
+        $existing = $this->findRestaurantRaw($id);
         if (!$existing) {
             Response::json(["error" => "not_found"], 404);
         }
@@ -300,7 +353,7 @@ class RestaurantApiController {
             Response::json(["error" => "forbidden"], 403);
         }
 
-        $existing = $this->findRestaurant($id);
+        $existing = $this->findRestaurantRaw($id);
         if (!$existing) {
             Response::json(["error" => "not_found"], 404);
         }

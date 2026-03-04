@@ -110,4 +110,10 @@ class AuthApiController {
         }
         Response::json($row, 200);
     }
+
+    public function logout() {
+        Response::json([
+            "status" => "logged_out"
+        ], 200);
+    }
 }

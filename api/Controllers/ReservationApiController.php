@@ -5,6 +5,7 @@ require_once '/var/www/src/Database.php';
 require_once __DIR__ . '/../Config/database.php';
 require_once '/var/www/src/Models/Reservation.php';
 require_once '/var/www/src/Models/Restaurant.php';
+require_once '/var/www/src/Mailer.php';
 require_once __DIR__ . '/../Helpers/Response.php';
 
 use API\Helpers\Response;
@@ -37,6 +38,26 @@ class ReservationApiController {
         return $_POST ?? [];
     }
 
+    private function fetchUserEmail($userId) {
+        if (isset($userId) && !empty($userId)) {
+            $db = \Database::getConnection();
+            $stmt = $db->prepare("SELECT email FROM users WHERE id = ?");
+            $stmt->execute([$userId]);
+            $email = $stmt->fetchColumn();
+            if ($email) {
+                return $email;
+            }
+        }
+        return null;
+    }
+
+    private function fetchRestaurantName($restaurantId) {
+        $db = \Database::getConnection();
+        $stmt = $db->prepare("SELECT name FROM restaurants WHERE id = ?");
+        $stmt->execute([$restaurantId]);
+        return $stmt->fetchColumn() ?: 'Restaurant';
+    }
+
     public function store($user) {
         $db = \Database::getConnection();
         $input = $this->getInput();
@@ -60,14 +81,29 @@ class ReservationApiController {
             $code
         ]);
 
+        $mailSent = false;
+        $email = $this->fetchUserEmail($user['id'] ?? null) ?: ($user['email'] ?? null);
+        if ($email) {
+            $restaurantName = $this->fetchRestaurantName((int)$input['restaurant_id']);
+            $subject = "Réservation confirmée";
+            $html = "<h1>Réservation confirmée</h1>"
+                . "<p>Restaurant : " . htmlspecialchars($restaurantName, ENT_QUOTES, 'UTF-8') . "</p>"
+                . "<p>Date : " . htmlspecialchars((string)$input['reservation_date'], ENT_QUOTES, 'UTF-8') . "</p>"
+                . "<p>Heure : " . htmlspecialchars((string)$input['reservation_time'], ENT_QUOTES, 'UTF-8') . "</p>"
+                . "<p>Code : " . htmlspecialchars($code, ENT_QUOTES, 'UTF-8') . "</p>";
+            $mailSent = \Mailer::send($email, $subject, $html);
+        }
+
         Response::json([
             "status" => "created",
-            "code" => $code
+            "code" => $code,
+            "mail_sent" => (bool)$mailSent
         ], 201);
     }
 
     public function userReservations($user) {
         $db = \Database::getConnection();
+        \Reservation::deleteExpired();
 
         $stmt = $db->prepare("
             SELECT r.*, res.name AS restaurant_name
