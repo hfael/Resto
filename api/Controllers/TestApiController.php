@@ -2,10 +2,12 @@
 namespace API\Controllers;
 
 require_once '/var/www/src/Database.php';
-require_once __DIR__.'/../Config/database.php';
+require_once __DIR__ . '/../Config/database.php';
 require_once __DIR__ . '/../Helpers/Response.php';
+require_once __DIR__ . '/../Helpers/JwtHelper.php';
 
 use API\Helpers\Response;
+use API\Helpers\JwtHelper;
 
 class TestApiController {
 
@@ -30,10 +32,34 @@ class TestApiController {
         $input = json_decode(file_get_contents("php://input"), true) ?? [];
         $type = $input['type'] ?? 'restaurant';
 
-        if ($type === 'restaurant') {
-            $db = \Database::getConnection();
+        $db = \Database::getConnection();
 
-            $name = htmlspecialchars($input['name'] ?? 'Seed Restaurant ' . time());
+        if ($type === 'user') {
+            $role = $input['role'] ?? 'user';
+            $username = $input['username'] ?? ('seeduser_' . time());
+            $email = $input['email'] ?? ('seeduser+' . time() . '@example.com');
+            $password = $input['password'] ?? 'password';
+
+            $hash = password_hash($password, PASSWORD_BCRYPT);
+            $stmt = $db->prepare("INSERT INTO users (username, email, password, role) VALUES (?, ?, ?, ?)");
+            $stmt->execute([$username, $email, $hash, $role]);
+            $id = $db->lastInsertId();
+            $token = JwtHelper::generate(["id" => $id, "email" => $email, "role" => $role]);
+
+            Response::json([
+                "status" => "seeded",
+                "type" => "user",
+                "id" => $id,
+                "username" => $username,
+                "email" => $email,
+                "role" => $role,
+                "password" => $password,
+                "token" => $token
+            ], 201);
+        }
+
+        if ($type === 'restaurant') {
+            $name = htmlspecialchars($input['name'] ?? ('Seed Restaurant ' . time()));
             $description = htmlspecialchars($input['description'] ?? 'Seeded for tests');
             $event_date = $input['event_date'] ?? date('Y-m-d');
             $average_price = (int)($input['average_price'] ?? 20);
@@ -41,14 +67,14 @@ class TestApiController {
             $longitude = (float)($input['longitude'] ?? 0);
             $contact_name = htmlspecialchars($input['contact_name'] ?? 'Seeder');
             $contact_email = htmlspecialchars($input['contact_email'] ?? 'seed@example.com');
-            $filename = $input['photo'] ?? 'seed.jpg';
+            $filename = $input['photo'] ?? '/uploads/seed.jpg';
             $owner_id = $input['owner_id'] ?? null;
 
             if (!$owner_id) {
                 $pass = password_hash('password', PASSWORD_DEFAULT);
                 $stmt = $db->prepare("INSERT INTO users (username, email, password, role) VALUES (?, ?, ?, 'owner')");
-                $email = 'seeduser+' . time() . '@example.com';
-                $stmt->execute(['seeduser', $email, $pass]);
+                $email = 'seedowner+' . time() . '@example.com';
+                $stmt->execute(['seedowner', $email, $pass]);
                 $owner_id = $db->lastInsertId();
             }
 

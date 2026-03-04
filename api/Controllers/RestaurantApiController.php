@@ -1,49 +1,169 @@
 <?php
 namespace API\Controllers;
 
+require_once '/var/www/src/Database.php';
 require_once '/var/www/src/Models/Restaurant.php';
-require_once __DIR__.'/../Config/database.php';
+require_once __DIR__ . '/../Config/database.php';
 require_once __DIR__ . '/../Helpers/Response.php';
 
 use API\Helpers\Response;
 
 class RestaurantApiController {
 
+    private function getUserRole($user) {
+        if (isset($user['role']) && $user['role']) {
+            return $user['role'];
+        }
+        if (!isset($user['id'])) {
+            return 'user';
+        }
+        $db = \Database::getConnection();
+        $stmt = $db->prepare("SELECT role FROM users WHERE id = ?");
+        $stmt->execute([$user['id']]);
+        $role = $stmt->fetchColumn();
+        return $role ?: 'user';
+    }
+
+    private function isAdmin($user) {
+        return $this->getUserRole($user) === 'admin';
+    }
+
+    private function getInput() {
+        $contentType = $_SERVER['CONTENT_TYPE'] ?? '';
+        if (stripos($contentType, 'application/json') !== false) {
+            return json_decode(file_get_contents('php://input'), true) ?? [];
+        }
+        return $_POST ?? [];
+    }
+
+    private function findRestaurant($id) {
+        $db = \Database::getConnection();
+        $stmt = $db->prepare("SELECT * FROM restaurants WHERE id = ?");
+        $stmt->execute([$id]);
+        return $stmt->fetch(\PDO::FETCH_ASSOC);
+    }
+
+    private function canManageRestaurant($user, $restaurant) {
+        if ($this->isAdmin($user)) {
+            return true;
+        }
+        return isset($user['id']) && (string)$restaurant['created_by'] === (string)$user['id'];
+    }
+
     public function index()
     {
         $db = \Database::getConnection();
-        $stmt = $db->query("SELECT * FROM restaurants ORDER BY id DESC");
+        $stmt = $db->query("SELECT * FROM restaurants WHERE status = 'accepted' ORDER BY name ASC");
         $rows = $stmt->fetchAll(\PDO::FETCH_ASSOC);
         Response::json($rows);
     }
 
+    public function search()
+    {
+        $q = isset($_GET['q']) ? trim($_GET['q']) : '';
+        if ($q === '') {
+            Response::json([]);
+        }
+        $db = \Database::getConnection();
+        $stmt = $db->prepare("SELECT id, name, average_price, created_by FROM restaurants WHERE status = 'accepted' AND name LIKE ? ORDER BY id DESC");
+        $stmt->execute(['%' . $q . '%']);
+        $rows = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+        Response::json($rows);
+    }
+
+    public function mine($user)
+    {
+        $db = \Database::getConnection();
+        $stmt = $db->prepare("SELECT * FROM restaurants WHERE created_by = ? ORDER BY id DESC");
+        $stmt->execute([$user['id']]);
+        $rows = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+        Response::json($rows);
+    }
+
+    public function pending($user)
+    {
+        if (!$this->isAdmin($user)) {
+            Response::json(["error" => "forbidden"], 403);
+        }
+        $db = \Database::getConnection();
+        $stmt = $db->query("SELECT r.*, u.username AS owner_name FROM restaurants r JOIN users u ON u.id = r.created_by WHERE r.status = 'pending' ORDER BY r.created_at ASC");
+        $rows = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+        Response::json($rows);
+    }
+
+    public function bookings($user, $id)
+    {
+        $restaurant = $this->findRestaurant($id);
+        if (!$restaurant) {
+            Response::json(["error" => "not_found"], 404);
+        }
+
+        $ownerAllowed = isset($user['id']) && (
+            (string)$restaurant['owner_id'] === (string)$user['id'] ||
+            (string)$restaurant['created_by'] === (string)$user['id']
+        );
+
+        if (!$ownerAllowed && !$this->isAdmin($user)) {
+            Response::json(["error" => "forbidden"], 403);
+        }
+
+        $db = \Database::getConnection();
+        $stmt = $db->prepare("SELECT r.*, u.username AS username, u.email AS email FROM reservations r JOIN users u ON u.id = r.user_id WHERE r.restaurant_id = ? ORDER BY r.reservation_date ASC, r.reservation_time ASC");
+        $stmt->execute([$id]);
+        $bookings = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+
+        Response::json([
+            "restaurant" => $restaurant,
+            "bookings" => $bookings
+        ]);
+    }
 
     public function store($user)
     {
         $db = \Database::getConnection();
 
-        $name = htmlspecialchars($_POST['name'] ?? '');
-        $description = htmlspecialchars($_POST['description'] ?? '');
-        $event_date = $_POST['event_date'] ?? null;
-        $average_price = (int)($_POST['average_price'] ?? 0);
-        $latitude = (float)($_POST['latitude'] ?? 0);
-        $longitude = (float)($_POST['longitude'] ?? 0);
-        $contact_name = htmlspecialchars($_POST['contact_name'] ?? '');
-        $contact_email = htmlspecialchars($_POST['contact_email'] ?? '');
+        $input = $_POST;
+        $name = htmlspecialchars($input['name'] ?? '');
+        $description = htmlspecialchars($input['description'] ?? '');
+        $event_date = $input['event_date'] ?? null;
+        $average_price = (int)($input['average_price'] ?? 0);
+        $latitude = (float)($input['latitude'] ?? 0);
+        $longitude = (float)($input['longitude'] ?? 0);
+        $contact_name = htmlspecialchars($input['contact_name'] ?? '');
+        $contact_email = htmlspecialchars($input['contact_email'] ?? '');
 
-        if (!isset($_FILES['photo'])) {
+        if ($name === '' || $description === '' || $event_date === null || $contact_name === '' || $contact_email === '') {
+            Response::json(["error" => "missing_fields"], 400);
+        }
+
+        if (!filter_var($contact_email, FILTER_VALIDATE_EMAIL)) {
+            Response::json(["error" => "invalid_email"], 400);
+        }
+
+        if (!isset($_FILES['photo']) || $_FILES['photo']['error'] !== UPLOAD_ERR_OK) {
             Response::json(["error" => "missing_photo"], 400);
         }
 
-        $filename = 'restaurant_' . time() . '_' . rand(1000,9999) . '.jpg';
+        $allowed = ['image/jpeg', 'image/png', 'image/webp'];
+        if (!in_array($_FILES['photo']['type'], $allowed)) {
+            Response::json(["error" => "invalid_photo_type"], 400);
+        }
+
+        $ext = pathinfo($_FILES['photo']['name'], PATHINFO_EXTENSION);
+        $ext = $ext ? strtolower($ext) : 'jpg';
+        $filename = 'restaurant_' . time() . '_' . rand(1000,9999) . '.' . $ext;
         $path = '/var/www/html/uploads/' . $filename;
 
-        move_uploaded_file($_FILES['photo']['tmp_name'], $path);
+        if (!move_uploaded_file($_FILES['photo']['tmp_name'], $path)) {
+            Response::json(["error" => "upload_failed"], 500);
+        }
+
+        $photo = '/uploads/' . $filename;
 
         $stmt = $db->prepare("
             INSERT INTO restaurants 
             (name, description, event_date, average_price, latitude, longitude, contact_name, contact_email, photo, owner_id, created_by, status)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, 'pending')
         ");
 
         $stmt->execute([
@@ -55,65 +175,143 @@ class RestaurantApiController {
             $longitude,
             $contact_name,
             $contact_email,
-            $filename,
-            $user['id'],
+            $photo,
             $user['id']
         ]);
 
         $id = $db->lastInsertId();
-        Response::json(["id" => $id, "status" => "created"], 201);
+        Response::json([
+            "id" => $id,
+            "status" => "created",
+            "name" => $name
+        ], 201);
     }
-
-
 
     public function show($id)
     {
-        $db = \Database::getConnection();
-        $stmt = $db->prepare("SELECT * FROM restaurants WHERE id = ?");
-        $stmt->execute([$id]);
-        $rows = $stmt->fetch(\PDO::FETCH_ASSOC);
+        $row = $this->findRestaurant($id);
+        if (!$row) {
+            Response::json(["error" => "not_found"], 404);
+        }
+        Response::json($row);
+    }
 
-        if (!$rows) {
+    public function update($user, $id)
+    {
+        $existing = $this->findRestaurant($id);
+        if (!$existing) {
             Response::json(["error" => "not_found"], 404);
         }
 
-        Response::json($rows);
-    }
+        if (!$this->canManageRestaurant($user, $existing)) {
+            Response::json(["error" => "forbidden"], 403);
+        }
 
+        $input = $this->getInput();
 
-    public function update($id)
-    {
-        $db = \Database::getConnection();
-        $input = json_decode(file_get_contents("php://input"), true);
+        $data = [
+            'name' => htmlspecialchars($input['name'] ?? $existing['name']),
+            'description' => htmlspecialchars($input['description'] ?? $existing['description']),
+            'event_date' => $input['event_date'] ?? $existing['event_date'],
+            'average_price' => (int)($input['average_price'] ?? $existing['average_price']),
+            'latitude' => (float)($input['latitude'] ?? $existing['latitude']),
+            'longitude' => (float)($input['longitude'] ?? $existing['longitude']),
+            'contact_name' => htmlspecialchars($input['contact_name'] ?? $existing['contact_name']),
+            'contact_email' => htmlspecialchars($input['contact_email'] ?? $existing['contact_email']),
+            'photo' => $existing['photo']
+        ];
 
-        $stmt = $db->prepare("
-            UPDATE restaurants SET 
-                name = ?, 
-                description = ?, 
-                average_price = ? 
-            WHERE id = ?
-        ");
+        if (isset($_FILES['photo']) && $_FILES['photo']['error'] === UPLOAD_ERR_OK) {
+            $allowed = ['image/jpeg', 'image/png', 'image/webp'];
+            if (!in_array($_FILES['photo']['type'], $allowed)) {
+                Response::json(["error" => "invalid_photo_type"], 400);
+            }
+            $ext = pathinfo($_FILES['photo']['name'], PATHINFO_EXTENSION);
+            $ext = $ext ? strtolower($ext) : 'jpg';
+            $filename = 'restaurant_' . time() . '_' . rand(1000,9999) . '.' . $ext;
+            $path = '/var/www/html/uploads/' . $filename;
+            if (!move_uploaded_file($_FILES['photo']['tmp_name'], $path)) {
+                Response::json(["error" => "upload_failed"], 500);
+            }
+            $data['photo'] = '/uploads/' . $filename;
+        }
 
-        $stmt->execute([
-            htmlspecialchars($input['name'] ?? ''),
-            htmlspecialchars($input['description'] ?? ''),
-            (int)($input['average_price'] ?? 0),
-            $id
-        ]);
+        if ($existing['status'] === 'rejected') {
+            \Restaurant::resubmit($id, $data);
+        } else {
+            \Restaurant::update($id, $data);
+        }
 
         Response::json(["status" => "updated", "id" => $id]);
     }
 
-
-    public function delete($id)
+    public function delete($user, $id)
     {
-        $db = \Database::getConnection();
-        $stmt = $db->prepare("DELETE FROM restaurants WHERE id = ?");
-        $stmt->execute([$id]);
+        $existing = $this->findRestaurant($id);
+        if (!$existing) {
+            Response::json(["error" => "not_found"], 404);
+        }
+
+        if (!$this->canManageRestaurant($user, $existing)) {
+            Response::json(["error" => "forbidden"], 403);
+        }
+
+        \Restaurant::delete($id);
         Response::json(["status" => "deleted", "id" => $id]);
     }
 
+    public function cancel($user, $id)
+    {
+        $existing = $this->findRestaurant($id);
+        if (!$existing) {
+            Response::json(["error" => "not_found"], 404);
+        }
+
+        if (!$this->canManageRestaurant($user, $existing)) {
+            Response::json(["error" => "forbidden"], 403);
+        }
+
+        if ($existing['status'] !== 'pending') {
+            Response::json(["error" => "invalid_status"], 400);
+        }
+
+        \Restaurant::cancel($id);
+        Response::json(["status" => "cancelled", "id" => $id]);
+    }
+
+    public function accept($user, $id)
+    {
+        if (!$this->isAdmin($user)) {
+            Response::json(["error" => "forbidden"], 403);
+        }
+
+        $existing = $this->findRestaurant($id);
+        if (!$existing) {
+            Response::json(["error" => "not_found"], 404);
+        }
+
+        \Restaurant::accept($id);
+        Response::json(["status" => "accepted", "id" => $id]);
+    }
+
+    public function reject($user, $id)
+    {
+        if (!$this->isAdmin($user)) {
+            Response::json(["error" => "forbidden"], 403);
+        }
+
+        $existing = $this->findRestaurant($id);
+        if (!$existing) {
+            Response::json(["error" => "not_found"], 404);
+        }
+
+        $input = $this->getInput();
+        $reason = trim($input['reason'] ?? '');
+        if ($reason === '') {
+            Response::json(["error" => "missing_reason"], 400);
+        }
+
+        \Restaurant::reject($id, $reason);
+        Response::json(["status" => "rejected", "id" => $id]);
+    }
 }
-
-
-

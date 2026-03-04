@@ -30,9 +30,56 @@ class ApiRouter {
             return;
         }
 
+        if ($path === '/auth/me' && $method === 'GET') {
+            $user = JwtMiddleware::protect();
+            (new AuthApiController)->me($user);
+            return;
+        }
+
         // RESTAURANTS
         if ($path === '/restaurants' && $method === 'GET') {
             (new RestaurantApiController)->index();
+            return;
+        }
+
+        if ($path === '/restaurants/search' && $method === 'GET') {
+            (new RestaurantApiController)->search();
+            return;
+        }
+
+        if ($path === '/restaurants/mine' && $method === 'GET') {
+            $user = JwtMiddleware::protect();
+            (new RestaurantApiController)->mine($user);
+            return;
+        }
+
+        if ($path === '/restaurants/pending' && $method === 'GET') {
+            $user = JwtMiddleware::protect();
+            (new RestaurantApiController)->pending($user);
+            return;
+        }
+
+        if (preg_match('#^/restaurants/([0-9]+)/bookings$#', $path, $m) && $method === 'GET') {
+            $user = JwtMiddleware::protect();
+            (new RestaurantApiController)->bookings($user, $m[1]);
+            return;
+        }
+
+        if (preg_match('#^/restaurants/([0-9]+)/cancel$#', $path, $m) && $method === 'POST') {
+            $user = JwtMiddleware::protect();
+            (new RestaurantApiController)->cancel($user, $m[1]);
+            return;
+        }
+
+        if (preg_match('#^/restaurants/([0-9]+)/accept$#', $path, $m) && $method === 'POST') {
+            $user = JwtMiddleware::protect();
+            (new RestaurantApiController)->accept($user, $m[1]);
+            return;
+        }
+
+        if (preg_match('#^/restaurants/([0-9]+)/reject$#', $path, $m) && $method === 'POST') {
+            $user = JwtMiddleware::protect();
+            (new RestaurantApiController)->reject($user, $m[1]);
             return;
         }
 
@@ -47,12 +94,14 @@ class ApiRouter {
                 (new RestaurantApiController)->show($m[1]);
                 return;
             }
-            if ($method === 'PUT') {
-                (new RestaurantApiController)->update($m[1]);
+            if ($method === 'PUT' || $method === 'POST') {
+                $user = JwtMiddleware::protect();
+                (new RestaurantApiController)->update($user, $m[1]);
                 return;
             }
             if ($method === 'DELETE') {
-                (new RestaurantApiController)->delete($m[1]);
+                $user = JwtMiddleware::protect();
+                (new RestaurantApiController)->delete($user, $m[1]);
                 return;
             }
         }
@@ -88,6 +137,6 @@ class ApiRouter {
             return;
         }
 
-        Response::json(["error" => "Route not found", "path"=>$path], 404);
+        Response::json(["error" => "Route not found", "path" => $path], 404);
     }
 }
