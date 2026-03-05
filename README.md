@@ -1,6 +1,6 @@
 # Projet Bloc 3 - Resto
 
-Projet d'ecole (niveau bac+2) pour le Bloc 3:
+Projet d'ecole pour le Bloc 3:
 - Site web PHP (MVC sans framework back-end)
 - API REST PHP
 - Application mobile Flutter
@@ -37,6 +37,3 @@ Projet d'ecole (niveau bac+2) pour le Bloc 3:
 ## Tests
 - Tests API Python:
   - `pytest -q`
-
-## Notes
-- Projet volontairement simple et lisible, sans architecture complexe.
