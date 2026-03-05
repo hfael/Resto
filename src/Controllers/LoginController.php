@@ -2,6 +2,7 @@
 
 require_once __DIR__ . '/../Models/User.php';
 require_once __DIR__ . '/../View.php';
+require_once __DIR__ . '/../Csrf.php';
 
 class LoginController
 {
@@ -17,6 +18,12 @@ class LoginController
 
     public function submit()
     {
+        if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
+            http_response_code(405);
+            exit('Methode non autorisee.');
+        }
+        Csrf::checkOrAbort();
+
         $email = trim($_POST['email'] ?? ''); 
         $p = trim($_POST['password'] ?? '');
 
@@ -36,6 +43,7 @@ class LoginController
             return;
         }
 
+        session_regenerate_id(true);
         $_SESSION['user_id']    = $user['id'];
         $_SESSION['user_email'] = $user['email'];
         $_SESSION['user_role']  = $user['role'];

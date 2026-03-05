@@ -6,16 +6,18 @@
 {% for r in pendingItems %}
     <div style="border: 1px solid #ccc; padding: 15px; margin-bottom: 10px;">
         <strong>{{ r.name }}</strong> (par {{ r.owner_name }})<br>
-        <img src="{{ r.photo }}" width="100"><br>
+        <img src="{{ r.photo }}" alt="Photo de {{ r.name }}" width="100"><br>
         
         <div style="margin-top: 10px;">
             {# Bouton Accepter : On peut utiliser un lien simple ou un formulaire #}
             <form action="/restaurant/accept?id={{ r.id }}" method="POST" style="display: inline;">
+                <input type="hidden" name="_csrf" value="{{ csrf_token }}">
                 <button type="submit" style="background: green; color: white; cursor: pointer;">Accepter</button>
             </form>
 
             {# Bouton Refuser : Formulaire obligatoire pour la raison #}
             <form action="/restaurant/reject?id={{ r.id }}" method="POST" style="display: inline; margin-left: 10px;">
+                <input type="hidden" name="_csrf" value="{{ csrf_token }}">
                 <input type="text" name="reason" placeholder="Motif du refus" required>
                 <button type="submit" style="background: red; color: white; cursor: pointer;">Refuser</button>
             </form>

@@ -2,6 +2,7 @@
 
 require_once __DIR__ . '/../Models/User.php';
 require_once __DIR__ . '/../View.php';
+require_once __DIR__ . '/../Csrf.php';
 
 class RegisterController
 {
@@ -17,6 +18,12 @@ class RegisterController
 
     public function submit()
     {
+        if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
+            http_response_code(405);
+            exit('Methode non autorisee.');
+        }
+        Csrf::checkOrAbort();
+
         $u = trim($_POST['username'] ?? '');
         $e = trim($_POST['email'] ?? '');
         $p = trim($_POST['password'] ?? '');

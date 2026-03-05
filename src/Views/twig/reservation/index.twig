@@ -13,7 +13,12 @@
         <strong>{{ r.restaurant_name }}</strong><br>
         Date : {{ r.reservation_date }}<br>
         Heure : {{ r.reservation_time }}<br>
-        Code : <strong>{{ r.code }}</strong>
+        Code : <strong>{{ r.code }}</strong><br>
+        <form method="POST" action="/reservation/delete" style="display:inline;">
+            <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+            <input type="hidden" name="id" value="{{ r.id }}">
+            <button type="submit">Supprimer</button>
+        </form>
     </div>
 {% endfor %}
 

@@ -12,25 +12,33 @@
 
 <div style="margin-bottom:20px; padding:10px; border:1px solid #ddd; width:300px">
 
-    <img src="{{ r.photo }}" width="120"><br>
+    <img src="{{ r.photo }}" alt="Photo de {{ r.name }}" width="120"><br>
     <strong>{{ r.name }}</strong><br>
     {{ r.description|slice(0,60) }}<br>
 
     {% if r.status == 'pending' %}
         <span style="color:orange">En attente</span><br>
-        <a href="/restaurant/cancel?id={{ r.id }}">Annuler</a>
+        <form method="POST" action="/restaurant/cancel" style="display:inline;">
+            <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+            <input type="hidden" name="id" value="{{ r.id }}">
+            <button type="submit">Annuler</button>
+        </form>
     {% endif %}
 
     {% if r.status == 'accepted' %}
-        <span style="color:green">Accepté</span><br>
+        <span style="color:green">Accepte</span><br>
         <a href="/restaurant/show?id={{ r.id }}">Voir</a><br>
         <a href="/restaurant/edit?id={{ r.id }}">Modifier</a><br>
-        <a href="/restaurant/delete?id={{ r.id }}">Supprimer</a><br>
-        <a href="/restaurant/bookings?id={{ r.id }}">Voir les réservations</a>
+        <form method="POST" action="/restaurant/delete" style="display:inline;">
+            <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+            <input type="hidden" name="id" value="{{ r.id }}">
+            <button type="submit">Supprimer</button>
+        </form><br>
+        <a href="/reservation/byRestaurant?id={{ r.id }}">Voir les reservations</a>
     {% endif %}
 
     {% if r.status == 'rejected' %}
-        <span style="color:red">Refusé</span><br>
+        <span style="color:red">Refuse</span><br>
 
         {% if r.rejection_reason %}
             <em>{{ r.rejection_reason }}</em><br>
@@ -40,7 +48,7 @@
     {% endif %}
 
     {% if r.status == 'cancelled' %}
-        <span style="color:gray">Annulé</span>
+        <span style="color:gray">Annule</span>
     {% endif %}
 
 </div>

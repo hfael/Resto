@@ -1,6 +1,7 @@
 <?php
 
 require_once __DIR__ . '/../vendor/autoload.php';
+require_once __DIR__ . '/Csrf.php';
 
 class View
 {
@@ -13,7 +14,7 @@ class View
 
             self::$twig = new \Twig\Environment($loader, [
                 'cache' => false,
-                'autoescape' => false
+                'autoescape' => 'html'
             ]);
         }
     }
@@ -21,6 +22,8 @@ class View
     public static function render($template, $data = [])
     {
         self::init();
+        $data['csrf_token'] = Csrf::token();
+        $data['session'] = $data['session'] ?? $_SESSION;
         echo self::$twig->render($template, $data);
     }
 }

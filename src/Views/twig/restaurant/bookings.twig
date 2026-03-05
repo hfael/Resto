@@ -15,6 +15,7 @@
         <th>Date</th>
         <th>Heure</th>
         <th>Code</th>
+        <th>Action</th>
     </tr>
 
     {% for b in bookings %}
@@ -24,6 +25,14 @@
         <td>{{ b.reservation_date }}</td>
         <td>{{ b.reservation_time }}</td>
         <td>{{ b.code }}</td>
+        <td>
+            <form method="POST" action="/reservation/deleteByOwner" style="display:inline;">
+                <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+                <input type="hidden" name="id" value="{{ b.id }}">
+                <input type="hidden" name="restaurant_id" value="{{ restaurant.id }}">
+                <button type="submit">Supprimer</button>
+            </form>
+        </td>
     </tr>
     {% endfor %}
 </table>

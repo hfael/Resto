@@ -4,7 +4,7 @@ class Mailer
 {
     public static function send($to, $subject, $html)
     {
-        $from = getenv('MAIL_FROM') ?: 'no-reply@localhost';
+        $from = getenv('MAIL_FROM') ?: 'no-reply@resto.local';
         $fromName = getenv('MAIL_FROM_NAME') ?: 'Resto App';
 
         $autoload = __DIR__ . '/../vendor/autoload.php';
@@ -15,6 +15,9 @@ class Mailer
         if (class_exists('\\PHPMailer\\PHPMailer\\PHPMailer')) {
             try {
                 $mail = new \PHPMailer\PHPMailer\PHPMailer(true);
+                if (!\PHPMailer\PHPMailer\PHPMailer::validateAddress($from)) {
+                    $from = 'no-reply@resto.local';
+                }
                 $mail->isSMTP();
                 $mail->Host = getenv('MAIL_HOST') ?: 'mailhog';
                 $mail->Port = (int)(getenv('MAIL_PORT') ?: 1025);

@@ -1,39 +1,48 @@
 {% extends "layout.twig" %}
 
 {% block content %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
 <h2>Modifier un restaurant</h2>
 
 <form action="/restaurant/update?id={{ r.id }}" method="POST" enctype="multipart/form-data">
+    <input type="hidden" name="_csrf" value="{{ csrf_token }}">
 
-    <input type="text" name="name" value="{{ r.name }}"><br>
+    <label for="name">Nom</label>
+    <input id="name" type="text" name="name" value="{{ r.name }}" required>
 
-    <textarea name="description">{{ r.description }}</textarea><br>
+    <label for="description">Description</label>
+    <textarea id="description" name="description" required>{{ r.description }}</textarea>
 
-    <input type="date" name="event_date" value="{{ r.event_date }}"><br>
+    <label for="event_date">Date</label>
+    <input id="event_date" type="date" name="event_date" value="{{ r.event_date }}" required>
 
-    <input type="number" name="average_price" value="{{ r.average_price }}"><br>
+    <label for="average_price">Prix moyen</label>
+    <input id="average_price" type="number" name="average_price" value="{{ r.average_price }}" required>
 
-    <p>Latitude :</p>
-    <input type="text" id="lat" name="latitude" value="{{ r.latitude }}" readonly><br>
+    <label for="lat">Latitude</label>
+    <input type="text" id="lat" name="latitude" value="{{ r.latitude }}" readonly required>
 
-    <p>Longitude :</p>
-    <input type="text" id="lng" name="longitude" value="{{ r.longitude }}" readonly><br><br>
+    <label for="lng">Longitude</label>
+    <input type="text" id="lng" name="longitude" value="{{ r.longitude }}" readonly required>
 
-    <div id="map" style="height:300px; margin-bottom:15px;"></div>
+    <div id="map" style="height:300px; margin-bottom:15px; border: 1px solid #ccc;" aria-label="Carte de selection latitude longitude"></div>
 
-    <input type="text" name="contact_name" value="{{ r.contact_name }}"><br>
-    <input type="email" name="contact_email" value="{{ r.contact_email }}"><br>
+    <label for="contact_name">Nom du contact</label>
+    <input id="contact_name" type="text" name="contact_name" value="{{ r.contact_name }}" required>
+
+    <label for="contact_email">Email contact</label>
+    <input id="contact_email" type="email" name="contact_email" value="{{ r.contact_email }}" required>
 
     <p>Photo actuelle :</p>
-    <img src="{{ r.photo }}" width="150"><br><br>
+    <img src="{{ r.photo }}" width="150" alt="Photo actuelle du restaurant">
 
-    <p>Nouvelle photo (optionnel) :</p>
-    <input type="file" name="photo"><br><br>
+    <label for="photo">Nouvelle photo (optionnel)</label>
+    <input id="photo" type="file" name="photo" accept="image/png,image/jpeg,image/webp">
 
     <button type="submit">Sauvegarder</button>
 </form>
-
 
 <script>
 const initialLat = {{ r.latitude }};
@@ -42,7 +51,8 @@ const initialLng = {{ r.longitude }};
 const map = L.map("map").setView([initialLat, initialLng], 13);
 
 L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-    maxZoom: 19
+    maxZoom: 19,
+    attribution: "OpenStreetMap"
 }).addTo(map);
 
 let marker = L.marker([initialLat, initialLng]).addTo(map);

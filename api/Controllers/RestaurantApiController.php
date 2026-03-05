@@ -3,6 +3,7 @@ namespace API\Controllers;
 
 require_once '/var/www/src/Database.php';
 require_once '/var/www/src/Models/Restaurant.php';
+require_once '/var/www/src/Mailer.php';
 require_once __DIR__ . '/../Config/database.php';
 require_once __DIR__ . '/../Helpers/Response.php';
 
@@ -97,11 +98,57 @@ class RestaurantApiController {
         return isset($user['id']) && (string)$restaurant['created_by'] === (string)$user['id'];
     }
 
+    private function pagination(): ?array {
+        if (!isset($_GET['page']) && !isset($_GET['per_page'])) {
+            return null;
+        }
+
+        $page = max(1, (int)($_GET['page'] ?? 1));
+        $perPage = (int)($_GET['per_page'] ?? 20);
+        $perPage = max(1, min(50, $perPage));
+        $offset = ($page - 1) * $perPage;
+        return [$page, $perPage, $offset];
+    }
+
+    private function sendCreationMail(array $data, int $id): bool {
+        $detailUrl = $this->baseUrl() . '/restaurant/show?id=' . $id;
+        $apiUrl = $this->baseUrl() . '/api/restaurants/' . $id;
+        $html = '<h1>Confirmation de creation</h1>'
+            . '<p><strong>Nom :</strong> ' . htmlspecialchars((string)($data['name'] ?? ''), ENT_QUOTES, 'UTF-8') . '</p>'
+            . '<p><strong>Description :</strong> ' . htmlspecialchars((string)($data['description'] ?? ''), ENT_QUOTES, 'UTF-8') . '</p>'
+            . '<p><strong>Date :</strong> ' . htmlspecialchars((string)($data['event_date'] ?? ''), ENT_QUOTES, 'UTF-8') . '</p>'
+            . '<p><strong>Prix :</strong> ' . htmlspecialchars((string)($data['average_price'] ?? ''), ENT_QUOTES, 'UTF-8') . '</p>'
+            . '<p><strong>Latitude :</strong> ' . htmlspecialchars((string)($data['latitude'] ?? ''), ENT_QUOTES, 'UTF-8') . '</p>'
+            . '<p><strong>Longitude :</strong> ' . htmlspecialchars((string)($data['longitude'] ?? ''), ENT_QUOTES, 'UTF-8') . '</p>'
+            . '<p><strong>Contact :</strong> ' . htmlspecialchars((string)($data['contact_name'] ?? ''), ENT_QUOTES, 'UTF-8') . '</p>'
+            . '<p><strong>Email contact :</strong> ' . htmlspecialchars((string)($data['contact_email'] ?? ''), ENT_QUOTES, 'UTF-8') . '</p>'
+            . '<p><strong>Lien details web :</strong> <a href="' . htmlspecialchars($detailUrl, ENT_QUOTES, 'UTF-8') . '">' . htmlspecialchars($detailUrl, ENT_QUOTES, 'UTF-8') . '</a></p>'
+            . '<p><strong>Lien details API :</strong> <a href="' . htmlspecialchars($apiUrl, ENT_QUOTES, 'UTF-8') . '">' . htmlspecialchars($apiUrl, ENT_QUOTES, 'UTF-8') . '</a></p>';
+
+        if (empty($data['contact_email'])) {
+            return false;
+        }
+
+        return \Mailer::send($data['contact_email'], 'Confirmation de creation de votre entite', $html);
+    }
+
     public function index()
     {
         $db = \Database::getConnection();
-        $stmt = $db->query("SELECT * FROM restaurants WHERE status = 'accepted' ORDER BY name ASC");
-        $rows = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+        $pagination = $this->pagination();
+
+        if ($pagination === null) {
+            $stmt = $db->query("SELECT * FROM restaurants WHERE status = 'accepted' ORDER BY name ASC");
+            $rows = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+        } else {
+            [, $perPage, $offset] = $pagination;
+            $stmt = $db->prepare("SELECT * FROM restaurants WHERE status = 'accepted' ORDER BY name ASC LIMIT :limit OFFSET :offset");
+            $stmt->bindValue(':limit', $perPage, \PDO::PARAM_INT);
+            $stmt->bindValue(':offset', $offset, \PDO::PARAM_INT);
+            $stmt->execute();
+            $rows = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+        }
+
         Response::json($this->formatRestaurants($rows));
     }
 
@@ -112,9 +159,23 @@ class RestaurantApiController {
             Response::json([]);
         }
         $db = \Database::getConnection();
-        $stmt = $db->prepare("SELECT id, name, average_price, created_by, photo FROM restaurants WHERE status = 'accepted' AND name LIKE ? ORDER BY id DESC");
-        $stmt->execute(['%' . $q . '%']);
-        $rows = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+        $pagination = $this->pagination();
+
+        if ($pagination === null) {
+            $stmt = $db->prepare("SELECT id, name, average_price, created_by, photo FROM restaurants WHERE status = 'accepted' AND name LIKE :q ORDER BY id DESC");
+            $stmt->bindValue(':q', '%' . $q . '%', \PDO::PARAM_STR);
+            $stmt->execute();
+            $rows = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+        } else {
+            [, $perPage, $offset] = $pagination;
+            $stmt = $db->prepare("SELECT id, name, average_price, created_by, photo FROM restaurants WHERE status = 'accepted' AND name LIKE :q ORDER BY id DESC LIMIT :limit OFFSET :offset");
+            $stmt->bindValue(':q', '%' . $q . '%', \PDO::PARAM_STR);
+            $stmt->bindValue(':limit', $perPage, \PDO::PARAM_INT);
+            $stmt->bindValue(':offset', $offset, \PDO::PARAM_INT);
+            $stmt->execute();
+            $rows = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+        }
+
         Response::json($this->formatRestaurants($rows));
     }
 
@@ -227,12 +288,23 @@ class RestaurantApiController {
         ]);
 
         $id = $db->lastInsertId();
+        $mailSent = $this->sendCreationMail([
+            'name' => $name,
+            'description' => $description,
+            'event_date' => $event_date,
+            'average_price' => $average_price,
+            'latitude' => $latitude,
+            'longitude' => $longitude,
+            'contact_name' => $contact_name,
+            'contact_email' => $contact_email,
+        ], (int)$id);
         $created = $this->findRestaurant($id);
         Response::json([
             "id" => $id,
             "status" => "created",
             "name" => $name,
-            "restaurant" => $created
+            "restaurant" => $created,
+            "mail_sent" => (bool)$mailSent
         ], 201);
     }
 

@@ -1,42 +1,56 @@
 {% extends "layout.twig" %}
 
 {% block content %}
-{# Inclusion des ressources Leaflet si elles ne sont pas dans le layout #}
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
 <h2>Ajouter un restaurant</h2>
 
+{% if error is defined %}
+<p style="color:#b00020;" role="status" aria-live="polite">{{ error }}</p>
+{% endif %}
+
 <form action="/restaurant/store" method="POST" enctype="multipart/form-data">
-    <input type="text" name="name" placeholder="Nom" required><br>
-    <textarea name="description" placeholder="Description" required></textarea><br>
-    <input type="date" name="event_date" required><br>
-    <input type="number" name="average_price" placeholder="Prix moyen" required><br>
+    <input type="hidden" name="_csrf" value="{{ csrf_token }}">
 
-    <p>Latitude :</p>
-    <input type="text" id="lat" name="latitude" placeholder="Latitude" readonly required><br>
+    <label for="name">Nom</label>
+    <input id="name" type="text" name="name" placeholder="Nom" required>
 
-    <p>Longitude :</p>
-    <input type="text" id="lng" name="longitude" placeholder="Longitude" readonly required><br><br>
+    <label for="description">Description</label>
+    <textarea id="description" name="description" placeholder="Description" required></textarea>
 
-    <div id="map" style="height:300px; margin-bottom:15px; border: 1px solid #ccc;"></div>
+    <label for="event_date">Date</label>
+    <input id="event_date" type="date" name="event_date" required>
 
-    <input type="text" name="contact_name" placeholder="Nom du contact" required><br>
-    <input type="email" name="contact_email" placeholder="Email contact" required><br>
+    <label for="average_price">Prix moyen</label>
+    <input id="average_price" type="number" name="average_price" placeholder="Prix moyen" required>
 
-    <p>Photo :</p>
-    <input type="file" name="photo" required><br><br>
+    <label for="lat">Latitude</label>
+    <input type="text" id="lat" name="latitude" placeholder="Latitude" readonly required>
 
-    <button type="submit">Créer</button>
+    <label for="lng">Longitude</label>
+    <input type="text" id="lng" name="longitude" placeholder="Longitude" readonly required>
+
+    <div id="map" style="height:300px; margin-bottom:15px; border: 1px solid #ccc;" aria-label="Carte de selection latitude longitude"></div>
+
+    <label for="contact_name">Nom du contact</label>
+    <input id="contact_name" type="text" name="contact_name" placeholder="Nom du contact" required>
+
+    <label for="contact_email">Email contact</label>
+    <input id="contact_email" type="email" name="contact_email" placeholder="Email contact" required>
+
+    <label for="photo">Photo</label>
+    <input id="photo" type="file" name="photo" accept="image/png,image/jpeg,image/webp" required>
+
+    <button type="submit">Creer</button>
 </form>
 
 <script>
-// Initialisation de la carte sur Paris par défaut
 const map = L.map("map").setView([48.8566, 2.3522], 13);
 
 L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
     maxZoom: 19,
-    attribution: '© OpenStreetMap'
+    attribution: "OpenStreetMap"
 }).addTo(map);
 
 let marker;
@@ -55,7 +69,6 @@ map.on("click", function(e) {
     }
 });
 
-// Forcer le redimensionnement au chargement pour éviter les bugs d'affichage
 setTimeout(() => {
     map.invalidateSize();
 }, 200);

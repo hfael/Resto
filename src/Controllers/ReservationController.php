@@ -1,16 +1,26 @@
 <?php
 
-require_once __DIR__.'/../Models/Reservation.php';
-require_once __DIR__.'/../Models/Restaurant.php';
-require_once __DIR__.'/../Mailer.php';
-require_once __DIR__.'/../View.php';
+require_once __DIR__ . '/../Models/Reservation.php';
+require_once __DIR__ . '/../Models/Restaurant.php';
+require_once __DIR__ . '/../Mailer.php';
+require_once __DIR__ . '/../View.php';
+require_once __DIR__ . '/../Database.php';
+require_once __DIR__ . '/../Csrf.php';
 
 class ReservationController
 {
+    private function requirePost()
+    {
+        if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
+            http_response_code(405);
+            exit('Methode non autorisee.');
+        }
+    }
+
     private function requireLogin()
     {
         if (!isset($_SESSION['user_id'])) {
-            header("Location: /login/index");
+            header('Location: /login/index');
             exit;
         }
     }
@@ -20,76 +30,69 @@ class ReservationController
         $this->requireLogin();
 
         Reservation::deleteExpired();
-
         $items = Reservation::allByUser($_SESSION['user_id']);
 
-        $html = "<h2>Mes réservations</h2>";
-
-        foreach ($items as $r) {
-            $html .= "
-                <p>
-                    <strong>{$r['restaurant_name']}</strong><br>
-                    Date : {$r['reservation_date']}<br>
-                    Heure : {$r['reservation_time']}<br>
-                    Code : {$r['code']}
-                    <a href='/reservation/delete?id={$r['id']}'>Supprimer</a>
-                </p><hr>";
-        }
-
-        View::render($html);
+        View::render('reservation/index.twig', [
+            'items' => $items,
+            'session' => $_SESSION,
+        ]);
     }
 
     public function create()
     {
         $this->requireLogin();
 
-        $restaurants = Restaurant::all();
+        $restaurants = Restaurant::allAccepted();
 
-        $html = "<h2>Nouvelle réservation</h2>
-        <form method='POST' action='/reservation/store'>
-        <select name='restaurant_id'>";
-
-        foreach ($restaurants as $r) {
-            $html .= "<option value='{$r['id']}'>{$r['name']}</option>";
-        }
-
-        $html .= "
-        </select><br><br>
-        <input type='date' name='reservation_date'><br>
-        <input type='time' name='reservation_time'><br>
-        <button type='submit'>Réserver</button>
-        </form>";
-
-        View::render($html);
+        View::render('reservation/create.twig', [
+            'restaurants' => $restaurants,
+            'session' => $_SESSION,
+        ]);
     }
 
     public function store()
     {
-
-
         $this->requireLogin();
+        $this->requirePost();
+        Csrf::checkOrAbort();
 
-        $code = strtoupper(bin2hex(random_bytes(4)));  
+        $restaurantId = (int)($_POST['restaurant_id'] ?? 0);
+        $date = trim((string)($_POST['reservation_date'] ?? ''));
+        $time = trim((string)($_POST['reservation_time'] ?? ''));
+
+        if ($restaurantId <= 0 || $date === '' || $time === '') {
+            http_response_code(400);
+            exit('Champs manquants.');
+        }
+
+        $code = strtoupper(bin2hex(random_bytes(4)));
 
         Reservation::create([
-            'restaurant_id' => $_POST['restaurant_id'],
+            'restaurant_id' => $restaurantId,
             'user_id' => $_SESSION['user_id'],
-            'reservation_date' => $_POST['reservation_date'],
-            'reservation_time' => $_POST['reservation_time'],
-            'code' => $code
+            'reservation_date' => $date,
+            'reservation_time' => $time,
+            'code' => $code,
         ]);
-        $html = "<h1>Réservation confirmée</h1><p>Date : {$_POST['reservation_date']}</p><p>Heure : {$_POST['reservation_time']}</p><p>Code : {$code}</p>";
-        Mailer::send($_SESSION['user_email'], "Réservation confirmée", $html);
 
-        header("Location: /reservation/index");
+        $html = '<h1>Reservation confirmee</h1>'
+            . '<p>Date : ' . htmlspecialchars($date, ENT_QUOTES, 'UTF-8') . '</p>'
+            . '<p>Heure : ' . htmlspecialchars($time, ENT_QUOTES, 'UTF-8') . '</p>'
+            . '<p>Code : ' . htmlspecialchars($code, ENT_QUOTES, 'UTF-8') . '</p>';
+
+        Mailer::send($_SESSION['user_email'], 'Reservation confirmee', $html);
+
+        header('Location: /reservation/index');
         exit;
     }
 
     public function delete()
     {
         $this->requireLogin();
+        $this->requirePost();
+        Csrf::checkOrAbort();
 
-        $id = $_GET['id'] ?? null;
+        $id = $_POST['id'] ?? null;
         if (!$id) {
             http_response_code(400);
             exit;
@@ -97,102 +100,94 @@ class ReservationController
 
         Reservation::delete($id, $_SESSION['user_id']);
 
-        header("Location: /reservation/index");
+        header('Location: /reservation/index');
         exit;
     }
+
     public function byRestaurant()
     {
         $this->requireLogin();
 
-        $restaurant_id = $_GET['id'] ?? null;
-        if (!$restaurant_id) {
-            View::render("<p>ID manquant.</p>");
-            return;
+        $restaurantId = (int)($_GET['id'] ?? 0);
+        if ($restaurantId <= 0) {
+            http_response_code(400);
+            exit('ID manquant.');
         }
 
-        // Vérifier ownership
         $db = Database::getConnection();
-        $stmt = $db->prepare("SELECT owner_id FROM restaurants WHERE id=?");
-        $stmt->execute([$restaurant_id]);
-        $owner_id = $stmt->fetchColumn();
+        $stmt = $db->prepare('SELECT id, name, owner_id, created_by FROM restaurants WHERE id = ?');
+        $stmt->execute([$restaurantId]);
+        $restaurant = $stmt->fetch(PDO::FETCH_ASSOC);
 
-        if (!$owner_id) {
-            View::render("<p>Restaurant introuvable.</p>");
-            return;
+        if (!$restaurant) {
+            http_response_code(404);
+            exit('Restaurant introuvable.');
         }
 
-        if ($owner_id != $_SESSION['user_id']) {
+        $isOwner = (string)($restaurant['owner_id'] ?? '') === (string)$_SESSION['user_id']
+            || (string)($restaurant['created_by'] ?? '') === (string)$_SESSION['user_id'];
+        $isAdmin = isset($_SESSION['user_role']) && $_SESSION['user_role'] === 'admin';
+
+        if (!$isOwner && !$isAdmin) {
             http_response_code(403);
-            exit("Accès refusé");
+            exit('Acces refuse.');
         }
 
-        // Récupérer les réservations associées
-        $stmt = $db->prepare("
-            SELECT 
-                r.id,
-                r.reservation_date,
-                r.reservation_time,
-                r.code,
-                u.username,
-                u.email
-            FROM reservations r
-            JOIN users u ON u.id = r.user_id
-            WHERE r.restaurant_id = ?
-            ORDER BY r.reservation_date ASC, r.reservation_time ASC
-        ");
-        $stmt->execute([$restaurant_id]);
+        $stmt = $db->prepare(
+            'SELECT r.id, r.reservation_date, r.reservation_time, r.code, u.username, u.email
+             FROM reservations r
+             JOIN users u ON u.id = r.user_id
+             WHERE r.restaurant_id = ?
+             ORDER BY r.reservation_date ASC, r.reservation_time ASC'
+        );
+        $stmt->execute([$restaurantId]);
         $items = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-        $html = "<h2>Réservations du restaurant #$restaurant_id</h2>";
-
-        if (empty($items)) {
-            $html .= "<p>Aucune réservation.</p>";
-            View::render($html);
-            return;
-        }
-
-        foreach ($items as $r) {
-            $html .= "
-                <div style='margin-bottom:10px; padding:10px; border:1px solid #ccc'>
-                    <strong>Utilisateur :</strong> {$r['username']} ({$r['email']})<br>
-                    <strong>Date :</strong> {$r['reservation_date']}<br>
-                    <strong>Heure :</strong> {$r['reservation_time']}<br>
-                    <strong>Code :</strong> {$r['code']}<br><br>
-
-                    <a href='/reservation/deleteByOwner?id={$r['id']}&restaurant_id={$restaurant_id}'>Supprimer</a>
-                </div>
-            ";
-        }
-        View::render($html);
+        View::render('restaurant/bookings.twig', [
+            'restaurant' => $restaurant,
+            'bookings' => $items,
+            'session' => $_SESSION,
+        ]);
     }
+
     public function deleteByOwner()
     {
         $this->requireLogin();
+        $this->requirePost();
+        Csrf::checkOrAbort();
 
-        $reservation_id = $_GET['id'] ?? null;
-        $restaurant_id  = $_GET['restaurant_id'] ?? null;
+        $reservationId = (int)($_POST['id'] ?? 0);
+        $restaurantId = (int)($_POST['restaurant_id'] ?? 0);
 
-        if (!$reservation_id || !$restaurant_id) {
+        if ($reservationId <= 0 || $restaurantId <= 0) {
             http_response_code(400);
-            exit("Paramètres manquants");
+            exit('Parametres manquants.');
         }
 
         $db = Database::getConnection();
-        $stmt = $db->prepare("SELECT owner_id FROM restaurants WHERE id=?");
-        $stmt->execute([$restaurant_id]);
-        $owner_id = $stmt->fetchColumn();
+        $stmt = $db->prepare('SELECT owner_id, created_by FROM restaurants WHERE id = ?');
+        $stmt->execute([$restaurantId]);
+        $restaurant = $stmt->fetch(PDO::FETCH_ASSOC);
 
-        if ($owner_id != $_SESSION['user_id']) {
-            http_response_code(403);
-            exit("Accès refusé");
+        if (!$restaurant) {
+            http_response_code(404);
+            exit('Restaurant introuvable.');
         }
 
-        $stmt = $db->prepare("DELETE FROM reservations WHERE id=?");
-        $stmt->execute([$reservation_id]);
+        $isOwner = (string)($restaurant['owner_id'] ?? '') === (string)$_SESSION['user_id']
+            || (string)($restaurant['created_by'] ?? '') === (string)$_SESSION['user_id'];
+        $isAdmin = isset($_SESSION['user_role']) && $_SESSION['user_role'] === 'admin';
 
-        header("Location: /reservation/byRestaurant?id=" . $restaurant_id);
+        if (!$isOwner && !$isAdmin) {
+            http_response_code(403);
+            exit('Acces refuse.');
+        }
+
+        $stmt = $db->prepare('DELETE FROM reservations WHERE id = ?');
+        $stmt->execute([$reservationId]);
+
+        header('Location: /reservation/byRestaurant?id=' . $restaurantId);
         exit;
     }
-
-
 }
+

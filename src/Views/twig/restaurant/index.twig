@@ -3,16 +3,21 @@
 {% block content %}
 <h2>Liste des restaurants</h2>
 
-<input type="text" id="searchInput" placeholder="Rechercher..." style="margin-bottom:10px">
+<label for="searchInput">Recherche</label>
+<input type="text" id="searchInput" placeholder="Rechercher..." style="margin-bottom:10px" aria-label="Recherche restaurant">
 
-<div id="results">
+<div id="results" aria-live="polite">
     {% for r in items %}
-        {{ r.name }} - {{ r.average_price }}€
-        <a href="/restaurant/show?id={{ r.id }}">Détails</a>
+        {{ r.name }} - {{ r.average_price }}EUR
+        <a href="/restaurant/show?id={{ r.id }}">Details</a>
 
         {% if session.user_role == 'admin' or r.created_by == session.user_id %}
             <a href="/restaurant/edit?id={{ r.id }}">Modifier</a>
-            <a href="/restaurant/delete?id={{ r.id }}">Supprimer</a>
+            <form method="POST" action="/restaurant/delete" style="display:inline;">
+                <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+                <input type="hidden" name="id" value="{{ r.id }}">
+                <button type="submit">Supprimer</button>
+            </form>
         {% endif %}
 
         <br>
@@ -25,37 +30,49 @@
 <a href="/restaurant/create">Ajouter un restaurant</a>
 
 <script>
-const input = document.getElementById("searchInput");
-const results = document.getElementById("results");
+const input = document.getElementById('searchInput');
+const results = document.getElementById('results');
+const csrfToken = '{{ csrf_token }}';
 
-// Stockage des infos de session pour le JS
-const userId = "{{ session.user_id }}";
-const userRole = "{{ session.user_role }}";
+const userId = '{{ session.user_id }}';
+const userRole = '{{ session.user_role }}';
 
-input.addEventListener("input", function() {
+function esc(value) {
+    return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+input.addEventListener('input', function() {
     const q = this.value;
 
-    fetch("/restaurant/search?q=" + encodeURIComponent(q))
+    fetch('/restaurant/search?q=' + encodeURIComponent(q))
         .then(res => res.json())
         .then(data => {
-            results.innerHTML = "";
+            results.innerHTML = '';
 
             if (data.length === 0) {
-                results.innerHTML = "<p>Aucun résultat</p>";
+                results.innerHTML = '<p>Aucun resultat</p>';
                 return;
             }
 
             data.forEach(item => {
-                let html = item.name + " - " + item.average_price + "€ ";
-                html += "<a href='/restaurant/show?id=" + item.id + "'>Détails</a> ";
+                let html = esc(item.name) + ' - ' + esc(item.average_price) + 'EUR ';
+                html += "<a href='/restaurant/show?id=" + esc(item.id) + "'>Details</a> ";
 
-                // Vérification des droits en JS (doit correspondre à la logique PHP/Twig)
                 if (userRole === 'admin' || item.created_by == userId) {
-                    html += "<a href='/restaurant/edit?id=" + item.id + "'>Modifier</a> ";
-                    html += "<a href='/restaurant/delete?id=" + item.id + "'>Supprimer</a>";
+                    html += "<a href='/restaurant/edit?id=" + esc(item.id) + "'>Modifier</a> ";
+                    html += "<form method='POST' action='/restaurant/delete' style='display:inline;'>";
+                    html += "<input type='hidden' name='_csrf' value='" + esc(csrfToken) + "'>";
+                    html += "<input type='hidden' name='id' value='" + esc(item.id) + "'>";
+                    html += "<button type='submit'>Supprimer</button>";
+                    html += '</form>';
                 }
 
-                html += "<br>";
+                html += '<br>';
                 results.innerHTML += html;
             });
         });

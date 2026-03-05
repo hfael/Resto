@@ -7,7 +7,7 @@
 <a href="/pdf/restaurant?id={{ r.id }}" target="_blank">Exporter en PDF</a>
 <br><br>
 
-<img src="{{ r.photo }}" width="300"><br><br>
+<img src="{{ r.photo }}" alt="Photo de {{ r.name }}" width="300"><br><br>
 
 <p><strong>Nom :</strong> {{ r.name }}</p>
 <p><strong>Description :</strong> {{ r.description }}</p>
@@ -23,6 +23,7 @@
 <h3>Réserver</h3>
 
 <form method="POST" action="/reservation/store">
+    <input type="hidden" name="_csrf" value="{{ csrf_token }}">
     <input type="hidden" name="restaurant_id" value="{{ r.id }}">
 
     <label>Date :</label><br>

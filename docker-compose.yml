@@ -13,8 +13,9 @@ services:
     environment:
       MAIL_HOST: mailhog
       MAIL_PORT: 1025
-      MAIL_FROM: no-reply@localhost
+      MAIL_FROM: no-reply@resto.local
       MAIL_FROM_NAME: "Resto App"
+      JWT_SECRET: "resto_dev_secret_change_me"
     depends_on:
       - mysql
       - mailhog

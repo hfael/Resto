@@ -2,26 +2,25 @@
 
 {% block content %}
 
-<h2>Nouvelle réservation</h2>
+<h2>Nouvelle reservation</h2>
 
 <form method="POST" action="/reservation/store">
+    <input type="hidden" name="_csrf" value="{{ csrf_token }}">
 
-    <label>Restaurant :</label><br>
-    <select name="restaurant_id">
+    <label for="restaurant_id">Restaurant</label>
+    <select id="restaurant_id" name="restaurant_id" required>
         {% for r in restaurants %}
             <option value="{{ r.id }}">{{ r.name }}</option>
         {% endfor %}
     </select>
-    <br><br>
 
-    <label>Date :</label><br>
-    <input type="date" name="reservation_date" required><br><br>
+    <label for="reservation_date">Date</label>
+    <input id="reservation_date" type="date" name="reservation_date" required>
 
-    <label>Heure :</label><br>
-    <input type="time" name="reservation_time" required><br><br>
+    <label for="reservation_time">Heure</label>
+    <input id="reservation_time" type="time" name="reservation_time" required>
 
-    <button type="submit">Réserver</button>
-
+    <button type="submit">Reserver</button>
 </form>
 
 {% endblock %}
