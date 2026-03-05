@@ -11,6 +11,7 @@ Lancer les tests:
 
 Variables d'environnement utiles:
 - API_BASE_URL : URL de l'API (par défaut http://localhost:8080/api)
+- API_RESET : si defini a 1/true/yes, reinitialise la base via `/test/seed` au demarrage des tests (destructif).
 - SEED_KEY : clé utilisée pour l'endpoint de seed (`/test/seed`). Par défaut `devseed` si non défini (uniquement en environnement non-production).
 
 Conseils:

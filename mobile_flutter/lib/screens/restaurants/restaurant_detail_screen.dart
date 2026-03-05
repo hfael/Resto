@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:mobile_flutter/app_state.dart';
 import 'package:mobile_flutter/models/restaurant.dart';
 import 'package:mobile_flutter/widgets/restaurant_image.dart';
+import 'package:mobile_flutter/widgets/restaurant_map.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class RestaurantDetailScreen extends StatefulWidget {
@@ -130,6 +131,7 @@ class _RestaurantDetailScreenState extends State<RestaurantDetailScreen> {
   @override
   Widget build(BuildContext context) {
     final r = _restaurant;
+    final hasLocation = r != null && (r.latitude != 0 || r.longitude != 0);
     return Scaffold(
       appBar: AppBar(title: const Text('Détails')),
       body: _loading
@@ -149,6 +151,20 @@ class _RestaurantDetailScreenState extends State<RestaurantDetailScreen> {
                 Text('Prix moyen: ${r.averagePrice} EUR'),
                 Text('Latitude: ${r.latitude}'),
                 Text('Longitude: ${r.longitude}'),
+                const SizedBox(height: 8),
+                Text(
+                  'Localisation',
+                  style: Theme.of(context).textTheme.titleSmall,
+                ),
+                const SizedBox(height: 8),
+                if (hasLocation)
+                  RestaurantMap(
+                    latitude: r.latitude,
+                    longitude: r.longitude,
+                  )
+                else
+                  const Text('Localisation non renseignee'),
+                const SizedBox(height: 8),
                 Text('Contact: ${r.contactName}'),
                 Text('Email: ${r.contactEmail}'),
                 const SizedBox(height: 12),

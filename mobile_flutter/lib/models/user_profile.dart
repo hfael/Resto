@@ -13,9 +13,16 @@ class UserProfile {
 
   bool get isAdmin => role == 'admin';
 
+  static int _toInt(dynamic value) {
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    if (value is String) return int.tryParse(value) ?? 0;
+    return 0;
+  }
+
   factory UserProfile.fromJson(Map<String, dynamic> json) {
     return UserProfile(
-      id: (json['id'] as num?)?.toInt() ?? 0,
+      id: _toInt(json['id']),
       username: (json['username'] ?? '') as String,
       email: (json['email'] ?? '') as String,
       role: (json['role'] ?? 'user') as String,

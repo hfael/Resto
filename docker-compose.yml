@@ -10,8 +10,14 @@ services:
       - ./api:/var/www/html/api
     ports:
       - "8080:80"
+    environment:
+      MAIL_HOST: mailhog
+      MAIL_PORT: 1025
+      MAIL_FROM: no-reply@localhost
+      MAIL_FROM_NAME: "Resto App"
     depends_on:
       - mysql
+      - mailhog
 
   mysql:
     image: mysql:8.0
@@ -27,6 +33,7 @@ services:
       - mysql_data:/var/lib/mysql
     ports:
       - "3306:3306"
+
   phpmyadmin:
     image: phpmyadmin/phpmyadmin
     container_name: pma
@@ -40,5 +47,13 @@ services:
       PMA_PASSWORD: root
     ports:
       - "8081:80"
+
+  mailhog:
+    image: mailhog/mailhog
+    container_name: mailhog
+    ports:
+      - "8025:8025"
+      - "1025:1025"
+
 volumes:
   mysql_data:

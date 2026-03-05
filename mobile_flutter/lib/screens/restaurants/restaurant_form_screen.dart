@@ -6,6 +6,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:mobile_flutter/app_state.dart';
 import 'package:mobile_flutter/models/restaurant.dart';
 import 'package:mobile_flutter/widgets/restaurant_image.dart';
+import 'package:mobile_flutter/widgets/restaurant_map.dart';
 
 class RestaurantFormScreen extends StatefulWidget {
   const RestaurantFormScreen({
@@ -37,6 +38,20 @@ class _RestaurantFormScreenState extends State<RestaurantFormScreen> {
   bool _submitting = false;
 
   bool get _isEdit => widget.restaurant != null;
+
+  static const double _defaultLat = 48.8566;
+  static const double _defaultLng = 2.3522;
+
+  double? _parseCoord(String value) {
+    final normalized = value.replaceAll(',', '.').trim();
+    return double.tryParse(normalized);
+  }
+
+  void _setCoordinates(double lat, double lng) {
+    _latitudeCtrl.text = lat.toStringAsFixed(7);
+    _longitudeCtrl.text = lng.toStringAsFixed(7);
+    setState(() {});
+  }
 
   @override
   void initState() {
@@ -120,9 +135,7 @@ class _RestaurantFormScreenState extends State<RestaurantFormScreen> {
       return;
     }
     final pos = await Geolocator.getCurrentPosition();
-    _latitudeCtrl.text = pos.latitude.toStringAsFixed(7);
-    _longitudeCtrl.text = pos.longitude.toStringAsFixed(7);
-    setState(() {});
+    _setCoordinates(pos.latitude, pos.longitude);
   }
 
   Future<void> _pickDate() async {
@@ -198,6 +211,10 @@ class _RestaurantFormScreenState extends State<RestaurantFormScreen> {
   Widget build(BuildContext context) {
     final existingPhoto = widget.restaurant?.photo ?? '';
     final previewUrl = _photoFile == null ? existingPhoto : '';
+    final parsedLat = _parseCoord(_latitudeCtrl.text);
+    final parsedLng = _parseCoord(_longitudeCtrl.text);
+    final mapLat = parsedLat ?? _defaultLat;
+    final mapLng = parsedLng ?? _defaultLng;
 
     return Scaffold(
       appBar: AppBar(
@@ -260,6 +277,7 @@ class _RestaurantFormScreenState extends State<RestaurantFormScreen> {
                         decimal: true,
                         signed: true,
                       ),
+                      onChanged: (_) => setState(() {}),
                       decoration: const InputDecoration(labelText: 'Latitude'),
                       validator: (v) => (v == null || v.trim().isEmpty)
                           ? 'Champ requis'
@@ -274,6 +292,7 @@ class _RestaurantFormScreenState extends State<RestaurantFormScreen> {
                         decimal: true,
                         signed: true,
                       ),
+                      onChanged: (_) => setState(() {}),
                       decoration: const InputDecoration(labelText: 'Longitude'),
                       validator: (v) => (v == null || v.trim().isEmpty)
                           ? 'Champ requis'
@@ -290,6 +309,22 @@ class _RestaurantFormScreenState extends State<RestaurantFormScreen> {
                   label: const Text('Utiliser la position du téléphone'),
                 ),
               ),
+              const SizedBox(height: 8),
+              Text(
+                'Position sur la carte',
+                style: Theme.of(context).textTheme.titleSmall,
+              ),
+              const SizedBox(height: 8),
+              RestaurantMap(
+                latitude: mapLat,
+                longitude: mapLng,
+                onTap: (lat, lng) => _setCoordinates(lat, lng),
+              ),
+              Text(
+                'Touchez la carte pour definir la position.',
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+              const SizedBox(height: 8),
               TextFormField(
                 controller: _contactNameCtrl,
                 decoration: const InputDecoration(labelText: 'Contact nom'),

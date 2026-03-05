@@ -2,7 +2,8 @@
   "require": {
     "twig/twig": "^3.22",
     "dompdf/dompdf": "^3.1",
-    "firebase/php-jwt": "^6.0"
+    "firebase/php-jwt": "^6.0",
+    "phpmailer/phpmailer": "^7.0.0"
   },
   "autoload": {
     "psr-4": {
